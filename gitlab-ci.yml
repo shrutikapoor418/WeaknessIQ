@@ -1,0 +1,197 @@
+# ============================================================
+# GitLab CI/CD Pipeline — PureSecure CWE Analyser
+# ============================================================
+# Security philosophy: every commit is scanned before it
+# can be merged. The pipeline IS a security control.
+#
+# Stages run in order — a failure blocks all subsequent stages.
+# This means a secret leak or critical SAST finding will stop
+# deployment automatically.
+# ============================================================
+
+stages:
+  - validate        # Secret detection runs FIRST, before anything else
+  - sast            # Static analysis
+  - test            # Unit + integration tests
+  - build           # Docker image build
+  - scan            # Container vulnerability scan
+  - deploy          # Only reached if all prior stages pass
+
+# ── Variables ────────────────────────────────────────────────
+variables:
+  PYTHON_VERSION: "3.11"
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  DOCKER_IMAGE: "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
+
+# ── Cache pip dependencies ───────────────────────────────────
+.python-cache: &python-cache
+  cache:
+    key: pip-$CI_COMMIT_REF_SLUG
+    paths:
+      - .cache/pip
+
+# ============================================================
+# STAGE 1: VALIDATE — Secret Detection
+# Runs before SAST so we catch leaked credentials immediately.
+# Uses GitLab's built-in secret detection template.
+# ============================================================
+secret-detection:
+  stage: validate
+  image: registry.gitlab.com/gitlab-org/security-products/secret-detection:latest
+  script:
+    - /analyzer run
+  artifacts:
+    reports:
+      secret_detection: gl-secret-detection-report.json
+  # Never allow secret detection to be skipped — not even in MRs
+  allow_failure: false
+
+# ============================================================
+# STAGE 2: SAST — Static Application Security Testing
+# Bandit: Python-specific security linter
+# Semgrep: OWASP rule set
+# ============================================================
+bandit-sast:
+  stage: sast
+  image: python:$PYTHON_VERSION-slim
+  <<: *python-cache
+  before_script:
+    - pip install bandit[toml] --quiet
+  script:
+    # -ll = only HIGH severity findings fail the build
+    # -r  = recursive
+    # Report saved as artifact for evidence in submission
+    - bandit -r backend/ -ll -f json -o bandit-report.json || true
+    - bandit -r backend/ -ll    # This one actually fails the build
+  artifacts:
+    when: always
+    paths:
+      - bandit-report.json
+    expire_in: 30 days
+  allow_failure: false
+
+semgrep-sast:
+  stage: sast
+  image: returntocorp/semgrep:latest
+  script:
+    - semgrep --config=p/owasp-top-ten
+              --config=p/python
+              --config=p/secrets
+              --json
+              --output semgrep-report.json
+              backend/
+    - semgrep --config=p/owasp-top-ten
+              --config=p/python
+              backend/
+  artifacts:
+    when: always
+    paths:
+      - semgrep-report.json
+    expire_in: 30 days
+  allow_failure: false
+
+dependency-scan:
+  stage: sast
+  image: python:$PYTHON_VERSION-slim
+  <<: *python-cache
+  before_script:
+    - pip install safety --quiet
+  script:
+    # Safety checks dependencies against known CVE database
+    - pip install -r requirements.txt --quiet
+    - safety check --json > safety-report.json || true
+    - safety check                               # Fails build on critical CVEs
+  artifacts:
+    when: always
+    paths:
+      - safety-report.json
+    expire_in: 30 days
+  allow_failure: false
+
+# ============================================================
+# STAGE 3: TEST
+# ============================================================
+unit-tests:
+  stage: test
+  image: python:$PYTHON_VERSION-slim
+  <<: *python-cache
+  before_script:
+    - pip install -r requirements.txt -r requirements-dev.txt --quiet
+  script:
+    - pytest tests/
+             --cov=backend
+             --cov-report=xml:coverage.xml
+             --cov-report=term
+             -v
+  coverage: '/TOTAL.*\s+(\d+%)$/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+    expire_in: 30 days
+
+# ============================================================
+# STAGE 4: BUILD — Docker image
+# Only runs on main branch and tagged releases
+# ============================================================
+docker-build:
+  stage: build
+  image: docker:24
+  services:
+    - docker:24-dind
+  only:
+    - main
+    - tags
+  script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker build -t $DOCKER_IMAGE .
+    - docker push $DOCKER_IMAGE
+  # Tag latest only on main
+  after_script:
+    - |
+      if [ "$CI_COMMIT_BRANCH" = "main" ]; then
+        docker tag $DOCKER_IMAGE $CI_REGISTRY_IMAGE:latest
+        docker push $CI_REGISTRY_IMAGE:latest
+      fi
+
+# ============================================================
+# STAGE 5: CONTAINER SCAN — Trivy
+# Scans the built Docker image for OS + library CVEs
+# ============================================================
+trivy-container-scan:
+  stage: scan
+  image:
+    name: aquasec/trivy:latest
+    entrypoint: [""]
+  only:
+    - main
+    - tags
+  script:
+    - trivy image
+        --exit-code 1
+        --severity HIGH,CRITICAL
+        --format json
+        --output trivy-report.json
+        $DOCKER_IMAGE
+  artifacts:
+    when: always
+    paths:
+      - trivy-report.json
+    expire_in: 30 days
+  allow_failure: false   # CRITICAL CVEs block deployment
+
+# ============================================================
+# STAGE 6: DEPLOY (placeholder — extend for your environment)
+# ============================================================
+deploy-staging:
+  stage: deploy
+  image: alpine:latest
+  only:
+    - main
+  environment:
+    name: staging
+  script:
+    - echo "Deploy step — configure for your target environment"
+    - echo "Image to deploy: $DOCKER_IMAGE"
+  when: manual   # Require manual approval for deployment
