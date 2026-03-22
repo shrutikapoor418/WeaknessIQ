@@ -530,10 +530,156 @@
     .stat-card:nth-child(3) { animation-delay: 0.15s; }
     .stat-card:nth-child(4) { animation-delay: 0.20s; }
 
+    /* ── Threat Profile ── */
+    .threat-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .threat-block {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1rem;
+    }
+
+    .threat-block-title {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.75rem;
+    }
+
+    .nvd-count {
+      font-size: 2rem;
+      font-weight: 800;
+      color: #fff;
+      line-height: 1;
+    }
+
+    .nvd-label {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      color: var(--muted);
+      margin-top: 0.3rem;
+    }
+
+    .sev-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 3px 0;
+    }
+
+    .sev-name {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      color: var(--muted);
+    }
+
+    .sev-val {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      font-weight: 700;
+    }
+
+    .owasp-tag {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 0.62rem;
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: rgba(210,168,255,0.1);
+      border: 1px solid rgba(210,168,255,0.25);
+      color: var(--accent4);
+      margin: 2px;
+      line-height: 1.4;
+    }
+
+    .owasp-none {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      color: var(--muted);
+    }
+
+    .risk-factor {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      padding: 5px 0;
+      border-bottom: 1px solid var(--border);
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      color: var(--text);
+    }
+
+    .risk-factor:last-child { border-bottom: none; }
+    .risk-dot { color: var(--accent); margin-top: 1px; }
+
+    .cve-item {
+      padding: 0.6rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .cve-item:last-child { border-bottom: none; }
+
+    .cve-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 3px;
+    }
+
+    .cve-id {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--accent2);
+      text-decoration: none;
+    }
+
+    .cve-id:hover { text-decoration: underline; }
+
+    .cve-score {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      padding: 1px 6px;
+      border-radius: 3px;
+    }
+
+    .cve-desc {
+      font-size: 0.72rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    /* ── OWASP Coverage bars ── */
+    .owasp-bar-row {
+      display: grid;
+      grid-template-columns: 200px 1fr auto;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 4px 0;
+    }
+
+    .owasp-cat-name {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
     /* ── Responsive ── */
     @media (max-width: 900px) {
       .stat-row { grid-template-columns: 1fr 1fr; }
       .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .threat-grid { grid-template-columns: 1fr; }
+      .owasp-bar-row { grid-template-columns: 140px 1fr auto; }
     }
   </style>
 </head>
@@ -652,7 +798,41 @@
 
   </div>
 
-  <!-- Row 4: CWE Search -->
+  <!-- Row 4: Threat Profile -->
+  <div class="panel" style="margin-bottom:1.5rem">
+    <div class="panel-header">
+      <div class="panel-title">🎯 Enriched Threat Profile</div>
+      <div class="panel-badge">CWE + NVD + OWASP</div>
+    </div>
+    <div class="panel-body">
+      <div class="search-wrap">
+        <input class="search-input" type="text" id="threat-input"
+          placeholder="Enter CWE ID e.g. 79, 89, 22, 352..."
+          onkeydown="if(event.key==='Enter') loadThreatProfile()">
+        <button class="search-btn" onclick="loadThreatProfile()">ANALYSE</button>
+      </div>
+      <div id="threat-result">
+        <div style="color:var(--muted);font-family:var(--mono);font-size:0.72rem">
+          // Enter a CWE ID to see enriched threat profile from 3 data sources
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 5: OWASP Coverage -->
+  <div class="panel" style="margin-bottom:1.5rem">
+    <div class="panel-header">
+      <div class="panel-title">🛡 OWASP Top 10 — 2021 Coverage</div>
+      <div class="panel-badge">catalogue-wide mapping</div>
+    </div>
+    <div class="panel-body">
+      <div id="owasp-content">
+        <div class="loading"><div class="spin"></div>Loading OWASP coverage...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 6: CWE Search -->
   <div class="panel" style="margin-bottom:1.5rem">
     <div class="panel-header">
       <div class="panel-title">🔍 CWE Lookup</div>
@@ -947,6 +1127,153 @@
     }
   }
 
+  // ── Threat Profile ────────────────────────────────────────
+  async function loadThreatProfile() {
+    const id = document.getElementById('threat-input').value.trim().replace(/^CWE-/i, '');
+    const el = document.getElementById('threat-result');
+
+    if (!id || !/^\d+$/.test(id)) {
+      el.innerHTML = `<span style="color:var(--high);font-family:var(--mono);font-size:0.72rem">// Invalid ID — enter a numeric CWE ID</span>`;
+      return;
+    }
+
+    el.innerHTML = `<div class="loading"><div class="spin"></div>Fetching from CWE + NVD + OWASP...</div>`;
+
+    try {
+      const d = await fetchAPI(`/api/v1/enrich/threat-profile/${id}`);
+      const sev = d.nvd_enrichment?.severity_breakdown || {};
+      const sevColours = { CRITICAL:'#f85149', HIGH:'#e3b341', MEDIUM:'#58a6ff', LOW:'#3fb950', UNKNOWN:'#6e7f94' };
+
+      const owaspTags = d.owasp_mapping?.owasp_categories?.length
+        ? d.owasp_mapping.owasp_categories.map(c =>
+            `<span class="owasp-tag">${c.split('—')[0].trim()}</span>`).join('')
+        : `<span class="owasp-none">Not in OWASP Top 10</span>`;
+
+      const riskFactors = d.risk_factors?.length
+        ? d.risk_factors.map(r => `
+            <div class="risk-factor">
+              <span class="risk-dot">▸</span>
+              <span>${r}</span>
+            </div>`).join('')
+        : `<div style="color:var(--muted);font-family:var(--mono);font-size:0.7rem">No risk factors identified</div>`;
+
+      const sampleCVEs = d.nvd_enrichment?.sample_cves?.slice(0,3).map(c => `
+        <div class="cve-item">
+          <div class="cve-header">
+            <a class="cve-id" href="${c.nvd_url}" target="_blank" rel="noopener noreferrer">${c.cve_id}</a>
+            <span class="cve-score" style="background:${sevColours[c.severity] || '#6e7f94'}22;color:${sevColours[c.severity] || '#6e7f94'};border:1px solid ${sevColours[c.severity] || '#6e7f94'}44">
+              ${c.severity} ${c.cvss_score ? '· ' + c.cvss_score : ''}
+            </span>
+          </div>
+          <div class="cve-desc">${c.description}</div>
+        </div>`).join('') || `<div style="color:var(--muted);font-family:var(--mono);font-size:0.7rem">No CVE samples available</div>`;
+
+      el.innerHTML = `
+        <div style="margin-bottom:1rem">
+          <div style="font-size:1rem;font-weight:700;color:#fff">CWE-${d.cwe_id}: ${d.name}</div>
+          <div style="font-family:var(--mono);font-size:0.7rem;color:var(--muted);margin-top:3px">
+            ${d.abstraction} · Likelihood:
+            <span style="color:${LIKELIHOOD_COLOURS[d.likelihood_of_exploit]||'var(--muted)'}">
+              ${d.likelihood_of_exploit || 'Unspecified'}
+            </span>
+          </div>
+        </div>
+
+        <div class="threat-grid">
+          <!-- NVD Stats -->
+          <div class="threat-block">
+            <div class="threat-block-title">📊 NVD Real CVEs</div>
+            <div class="nvd-count">${(d.nvd_enrichment?.total_cves_in_nvd || 0).toLocaleString()}</div>
+            <div class="nvd-label">total CVEs in NVD</div>
+            <div style="margin-top:0.75rem">
+              ${Object.entries(sev).filter(([k,v])=>v>0).map(([k,v])=>`
+                <div class="sev-row">
+                  <span class="sev-name">${k}</span>
+                  <span class="sev-val" style="color:${sevColours[k]||'#fff'}">${v}</span>
+                </div>`).join('')}
+            </div>
+          </div>
+
+          <!-- OWASP -->
+          <div class="threat-block">
+            <div class="threat-block-title">🛡 OWASP Top 10 2021</div>
+            <div style="margin-bottom:0.5rem">${owaspTags}</div>
+            <div style="font-family:var(--mono);font-size:0.65rem;color:var(--muted);margin-top:0.5rem">
+              Source: owasp.org/Top10
+            </div>
+          </div>
+
+          <!-- Risk Factors -->
+          <div class="threat-block">
+            <div class="threat-block-title">⚠️ Risk Factors (${d.risk_factor_count || 0})</div>
+            ${riskFactors}
+          </div>
+        </div>
+
+        <!-- Sample CVEs -->
+        <div style="margin-top:0.5rem">
+          <div style="font-family:var(--mono);font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.5rem">
+            Sample CVEs from NVD
+          </div>
+          ${sampleCVEs}
+        </div>
+
+        <div style="margin-top:0.75rem;font-family:var(--mono);font-size:0.65rem;color:var(--border2)">
+          Data sources: ${(d.data_sources||[]).join(' · ')}
+        </div>
+      `;
+    } catch(e) {
+      el.innerHTML = `<span style="color:var(--high);font-family:var(--mono);font-size:0.72rem">// CWE-${id} not found or API error</span>`;
+    }
+  }
+
+  // ── OWASP Coverage ────────────────────────────────────────
+  async function loadOWASPCoverage() {
+    const el = document.getElementById('owasp-content');
+    try {
+      const data = await fetchAPI('/api/v1/enrich/owasp-coverage');
+      const max = Math.max(...data.by_category.map(c => c.cwe_count), 1);
+
+      el.innerHTML = `
+        <div style="display:flex;gap:2rem;margin-bottom:1rem;font-family:var(--mono);font-size:0.75rem">
+          <div>
+            <span style="color:#fff;font-weight:700">${data.cwes_in_owasp_top10}</span>
+            <span style="color:var(--muted)"> of ${data.total_cwes_analysed} CWEs mapped</span>
+          </div>
+          <div>
+            <span style="color:var(--accent3);font-weight:700">${data.coverage_percentage}%</span>
+            <span style="color:var(--muted)"> OWASP coverage</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:0.5rem">
+          ${data.by_category.map(c => `
+            <div class="owasp-bar-row">
+              <span class="owasp-cat-name" title="${c.category}">${c.category.split('—')[0].trim()}</span>
+              <div class="lang-bar-track">
+                <div class="lang-bar-fill" style="background:var(--accent4)" data-width="${(c.cwe_count/max*100).toFixed(1)}%"></div>
+              </div>
+              <span class="lang-count">${c.cwe_count}</span>
+            </div>
+          `).join('')}
+        </div>
+        <div class="insight-box" style="margin-top:1rem">
+          OWASP Top 10 2021 maps ${data.cwes_in_owasp_top10} CWEs from the catalogue
+          (${data.coverage_percentage}%). Injection (A03) and Broken Access Control (A01)
+          account for the largest share — these should be the focus of any secure development programme.
+        </div>
+      `;
+
+      setTimeout(() => {
+        el.querySelectorAll('.lang-bar-fill').forEach((b,i) => {
+          setTimeout(() => { b.style.width = b.dataset.width; }, i * 40);
+        });
+      }, 100);
+
+    } catch(e) {
+      el.innerHTML = `<div class="error-msg">Failed to load OWASP coverage</div>`;
+    }
+  }
+
   // ── Init ──────────────────────────────────────────────────
   async function init() {
     await checkStatus();
@@ -958,6 +1285,7 @@
       loadLanguageRisk(),
       loadAbstraction(),
       loadGaps(),
+      loadOWASPCoverage(),
     ]);
   }
 
