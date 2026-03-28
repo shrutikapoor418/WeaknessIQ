@@ -191,6 +191,50 @@ async def detection_gaps(request: Request, session: AsyncSession = Depends(get_s
 # ENRICHMENT ROUTES — NVD + OWASP (Gap 1 fix)
 # ══════════════════════════════════════════════════════════════════════════════
 
+@app.get("/api/v1/search")
+@limiter.limit("30/minute")
+async def search_cwe(
+    request: Request,
+    q: str,
+    limit: int = 20,
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    Search CWEs by name or keyword.
+    e.g. /api/v1/search?q=buffer+overflow
+    CWE-20: input sanitised — alphanumeric + spaces only.
+    """
+    import re
+    from sqlalchemy import or_
+    if not re.match(r"^[a-zA-Z0-9 \-_]{1,100}$", q):
+        raise HTTPException(status_code=400, detail="Invalid search query — use letters, numbers, spaces only")
+    limit = max(1, min(limit, 50))
+    result = await session.execute(
+        select(CWEModel)
+        .where(or_(
+            CWEModel.name.ilike(f"%{q}%"),
+            CWEModel.description.ilike(f"%{q}%")
+        ))
+        .limit(limit)
+    )
+    entries = result.scalars().all()
+    return {
+        "query": q,
+        "total_results": len(entries),
+        "results": [
+            {
+                "cwe_id": e.cwe_id,
+                "name": e.name,
+                "abstraction": e.abstraction,
+                "likelihood_of_exploit": e.likelihood_of_exploit,
+                "description": e.description[:200] + "..." if len(e.description) > 200 else e.description,
+                "consequences": e.common_consequences[:3] if e.common_consequences else [],
+            }
+            for e in entries
+        ]
+    }
+
+
 @app.get("/api/v1/enrich/nvd/{cwe_id}")
 @limiter.limit("5/minute")
 async def get_nvd_cves(request: Request, cwe_id: str, limit: int = 10,

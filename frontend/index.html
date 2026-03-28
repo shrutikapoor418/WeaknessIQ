@@ -674,12 +674,145 @@
       text-overflow: ellipsis;
     }
 
+    /* ── Nav Tabs ── */
+    .nav-tabs {
+      display: flex;
+      gap: 0.25rem;
+      align-items: center;
+      flex: 1;
+      justify-content: center;
+    }
+
+    .nav-tab {
+      background: none;
+      border: none;
+      padding: 0.4rem 1rem;
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--muted);
+      cursor: pointer;
+      border-radius: 6px;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .nav-tab:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+
+    .nav-tab.active {
+      color: #fff;
+      background: rgba(88,166,255,0.12);
+      border: 1px solid rgba(88,166,255,0.25);
+    }
+
+    /* ── Page sections ── */
+    .page-section { display: none; }
+    .page-section.active { display: block; }
+
+
+    .search-results { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.75rem; }
+
+    .search-result-item {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+      cursor: pointer;
+      transition: border-color 0.2s;
+      display: grid;
+      grid-template-columns: 70px 1fr auto;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .search-result-item:hover { border-color: var(--accent2); }
+
+    .result-id {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--accent2);
+      font-weight: 700;
+    }
+
+    .result-name {
+      font-size: 0.8rem;
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .result-desc {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    /* ── Tabs ── */
+    .tab-bar {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 1rem;
+    }
+
+    .tab-btn {
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      padding: 0.6rem 1.25rem;
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: -1px;
+    }
+
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--accent2); border-bottom-color: var(--accent2); }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* ── CVE List ── */
+    .cve-list { display: flex; flex-direction: column; gap: 0.5rem; }
+
+    /* ── MITRE Map ── */
+    .mitre-section { margin-bottom: 1rem; }
+    .mitre-label {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.4rem;
+    }
+    .mitre-value {
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      color: var(--text);
+      line-height: 1.6;
+    }
+    .rel-chip {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 0.62rem;
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin: 2px;
+      background: rgba(88,166,255,0.1);
+      border: 1px solid rgba(88,166,255,0.2);
+      color: var(--accent2);
+    }
+    .rel-chip.childof { background: rgba(247,129,102,0.1); border-color: rgba(247,129,102,0.2); color: var(--accent); }
+    .rel-chip.peerof  { background: rgba(210,168,255,0.1); border-color: rgba(210,168,255,0.2); color: var(--accent4); }
+
     /* ── Responsive ── */
     @media (max-width: 900px) {
       .stat-row { grid-template-columns: 1fr 1fr; }
       .grid-2, .grid-3 { grid-template-columns: 1fr; }
       .threat-grid { grid-template-columns: 1fr; }
       .owasp-bar-row { grid-template-columns: 140px 1fr auto; }
+      .search-result-item { grid-template-columns: 60px 1fr; }
     }
   </style>
 </head>
@@ -691,6 +824,12 @@
     <div class="logo-icon">W</div>
     Weakness<span>IQ</span>
   </div>
+  <nav class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('dashboard')">Dashboard</button>
+    <button class="nav-tab" onclick="showPage('search')">Search</button>
+    <button class="nav-tab" onclick="showPage('threat')">Threat Profile</button>
+    <button class="nav-tab" onclick="showPage('owasp')">OWASP</button>
+  </nav>
   <div class="status-pill">
     <div class="status-dot"></div>
     <span id="status-text">connecting...</span>
@@ -698,161 +837,194 @@
 </header>
 
 <main>
-  <!-- Page Title -->
-  <div class="page-title">
-    <h1>Security Intelligence Dashboard</h1>
-    <p>// MITRE CWE catalogue analysis — real-time threat landscape insights</p>
-  </div>
 
-  <!-- Stat Cards -->
-  <div class="stat-row" id="stat-row">
-    <div class="stat-card blue">
-      <div class="stat-label">Total Weaknesses</div>
-      <div class="stat-value" id="stat-total">—</div>
-      <div class="stat-sub">MITRE CWE catalogue</div>
-    </div>
-    <div class="stat-card red">
-      <div class="stat-label">High Likelihood</div>
-      <div class="stat-value" id="stat-high">—</div>
-      <div class="stat-sub">critical priority</div>
-    </div>
-    <div class="stat-card green">
-      <div class="stat-label">Base Weaknesses</div>
-      <div class="stat-value" id="stat-base">—</div>
-      <div class="stat-sub">most actionable level</div>
-    </div>
-    <div class="stat-card purple">
-      <div class="stat-label">Detection Gaps</div>
-      <div class="stat-value" id="stat-gaps">—</div>
-      <div class="stat-sub">no detection method</div>
-    </div>
-  </div>
+  <!-- ══ PAGE: DASHBOARD ══════════════════════════════════ -->
+  <div class="page-section active" id="page-dashboard">
 
-  <!-- Row 2: Likelihood + Language Risk -->
-  <div class="grid-2">
+    <div class="page-title">
+      <h1>Security Intelligence Dashboard</h1>
+      <p>// MITRE CWE catalogue analysis — real-time threat landscape insights</p>
+    </div>
 
-    <!-- Exploit Likelihood -->
-    <div class="panel">
-      <div class="panel-header">
-        <div class="panel-title">
-          ⚡ Exploit Likelihood Distribution
+    <!-- Stat Cards -->
+    <div class="stat-row" id="stat-row">
+      <div class="stat-card blue">
+        <div class="stat-label">Total Weaknesses</div>
+        <div class="stat-value" id="stat-total">—</div>
+        <div class="stat-sub">MITRE CWE catalogue</div>
+      </div>
+      <div class="stat-card red">
+        <div class="stat-label">High Likelihood</div>
+        <div class="stat-value" id="stat-high">—</div>
+        <div class="stat-sub">critical priority</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-label">Base Weaknesses</div>
+        <div class="stat-value" id="stat-base">—</div>
+        <div class="stat-sub">most actionable level</div>
+      </div>
+      <div class="stat-card purple">
+        <div class="stat-label">Detection Gaps</div>
+        <div class="stat-value" id="stat-gaps">—</div>
+        <div class="stat-sub">no detection method</div>
+      </div>
+    </div>
+
+    <!-- Likelihood + Language Risk -->
+    <div class="grid-2">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">⚡ Exploit Likelihood Distribution</div>
+          <div class="panel-badge">cross-catalogue</div>
         </div>
-        <div class="panel-badge">cross-catalogue</div>
+        <div class="panel-body">
+          <div id="likelihood-content"><div class="loading"><div class="spin"></div>Loading...</div></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">🔤 Language Risk Profiles</div>
+          <div class="panel-badge">top 8</div>
+        </div>
+        <div class="panel-body">
+          <div id="language-content"><div class="loading"><div class="spin"></div>Loading...</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Abstraction + Detection Gaps -->
+    <div class="grid-2">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">🧩 Abstraction Breakdown</div>
+          <div class="panel-badge">by level</div>
+        </div>
+        <div class="panel-body">
+          <div id="abstraction-content"><div class="loading"><div class="spin"></div>Loading...</div></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">🕳 Critical Blind Spots</div>
+          <div class="panel-badge">high likelihood + no detection</div>
+        </div>
+        <div class="panel-body">
+          <div id="gaps-content"><div class="loading"><div class="spin"></div>Loading...</div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══ PAGE: SEARCH ════════════════════════════════════ -->
+  <div class="page-section" id="page-search">
+
+    <div class="page-title">
+      <h1>Vulnerability Search</h1>
+      <p>// Search by name, keyword or CWE ID — see CVEs, MITRE mapping and OWASP classification</p>
+    </div>
+
+    <div class="panel" style="margin-bottom:1.5rem">
+      <div class="panel-header">
+        <div class="panel-title">🔍 Search Weaknesses</div>
+        <div class="panel-badge">name · keyword · ID</div>
       </div>
       <div class="panel-body">
-        <div id="likelihood-content">
-          <div class="loading"><div class="spin"></div>Loading...</div>
+        <div class="search-wrap" style="margin-bottom:1rem">
+          <input class="search-input" type="text" id="main-search"
+            placeholder="Search e.g. buffer overflow, injection, XSS, memory..."
+            onkeydown="if(event.key==='Enter') runSearch()">
+          <input class="search-input" type="text" id="id-search"
+            placeholder="Or CWE ID e.g. 79"
+            style="max-width:160px"
+            onkeydown="if(event.key==='Enter') searchById()">
+          <button class="search-btn" onclick="runSearch()">SEARCH</button>
+        </div>
+        <div id="search-results-list"></div>
+
+        <div id="detail-panel" style="display:none;margin-top:1.5rem">
+          <div style="font-family:var(--mono);font-size:0.72rem;color:var(--muted);margin-bottom:0.75rem">
+            Showing: <span id="detail-title" style="color:#fff;font-weight:700"></span>
+          </div>
+          <div class="tab-bar">
+            <button class="tab-btn active" onclick="switchTab('overview')">Overview</button>
+            <button class="tab-btn" onclick="switchTab('cve')">CVEs from NVD</button>
+            <button class="tab-btn" onclick="switchTab('mitre')">MITRE Mapping</button>
+            <button class="tab-btn" onclick="switchTab('owasp')">OWASP</button>
+          </div>
+          <div class="tab-content active" id="tab-overview">
+            <div class="cwe-result" id="overview-content">
+              <span style="color:var(--muted)">// Select a result above</span>
+            </div>
+          </div>
+          <div class="tab-content" id="tab-cve">
+            <div id="cve-content"></div>
+          </div>
+          <div class="tab-content" id="tab-mitre">
+            <div id="mitre-content"></div>
+          </div>
+          <div class="tab-content" id="tab-owasp">
+            <div id="owasp-tab-content"></div>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Language Risk -->
-    <div class="panel">
+  </div>
+
+  <!-- ══ PAGE: THREAT PROFILE ════════════════════════════ -->
+  <div class="page-section" id="page-threat">
+
+    <div class="page-title">
+      <h1>Enriched Threat Profile</h1>
+      <p>// Combined analysis from MITRE CWE + NIST NVD + OWASP Top 10 2021</p>
+    </div>
+
+    <div class="panel" style="margin-bottom:1.5rem">
       <div class="panel-header">
-        <div class="panel-title">
-          🔤 Language Risk Profiles
-        </div>
-        <div class="panel-badge">top 8</div>
+        <div class="panel-title">🎯 Threat Profile</div>
+        <div class="panel-badge">CWE + NVD + OWASP</div>
       </div>
       <div class="panel-body">
-        <div id="language-content">
-          <div class="loading"><div class="spin"></div>Loading...</div>
+        <div class="search-wrap">
+          <input class="search-input" type="text" id="threat-input"
+            placeholder="Enter CWE ID e.g. 79, 89, 22, 352..."
+            onkeydown="if(event.key==='Enter') loadThreatProfile()">
+          <button class="search-btn" onclick="loadThreatProfile()">ANALYSE</button>
+        </div>
+        <div style="font-family:var(--mono);font-size:0.68rem;color:var(--muted);margin-top:0.5rem;margin-bottom:1rem">
+          Try: 79 (XSS) · 89 (SQL injection) · 22 (path traversal) · 611 (XXE) · 787 (out-of-bounds)
+        </div>
+        <div id="threat-result">
+          <div style="color:var(--muted);font-family:var(--mono);font-size:0.72rem">
+            // Enter a CWE ID above to see enriched threat profile from 3 data sources
+          </div>
         </div>
       </div>
     </div>
 
   </div>
 
-  <!-- Row 3: Abstraction + Detection Gaps -->
-  <div class="grid-2">
+  <!-- ══ PAGE: OWASP ═════════════════════════════════════ -->
+  <div class="page-section" id="page-owasp">
 
-    <!-- Abstraction Breakdown -->
-    <div class="panel">
+    <div class="page-title">
+      <h1>OWASP Top 10 Coverage</h1>
+      <p>// How the 969 CWEs map to OWASP Top 10 2021 — catalogue-wide view</p>
+    </div>
+
+    <div class="panel" style="margin-bottom:1.5rem">
       <div class="panel-header">
-        <div class="panel-title">
-          🧩 Abstraction Breakdown
-        </div>
-        <div class="panel-badge">by level</div>
+        <div class="panel-title">🛡 OWASP Top 10 — 2021</div>
+        <div class="panel-badge">catalogue-wide mapping</div>
       </div>
       <div class="panel-body">
-        <div id="abstraction-content">
-          <div class="loading"><div class="spin"></div>Loading...</div>
+        <div id="owasp-content">
+          <div class="loading"><div class="spin"></div>Loading OWASP coverage...</div>
         </div>
       </div>
     </div>
 
-    <!-- Detection Gaps -->
-    <div class="panel">
-      <div class="panel-header">
-        <div class="panel-title">
-          🕳 Critical Blind Spots
-        </div>
-        <div class="panel-badge">high likelihood + no detection</div>
-      </div>
-      <div class="panel-body">
-        <div id="gaps-content">
-          <div class="loading"><div class="spin"></div>Loading...</div>
-        </div>
-      </div>
-    </div>
-
-  </div>
-
-  <!-- Row 4: Threat Profile -->
-  <div class="panel" style="margin-bottom:1.5rem">
-    <div class="panel-header">
-      <div class="panel-title">🎯 Enriched Threat Profile</div>
-      <div class="panel-badge">CWE + NVD + OWASP</div>
-    </div>
-    <div class="panel-body">
-      <div class="search-wrap">
-        <input class="search-input" type="text" id="threat-input"
-          placeholder="Enter CWE ID e.g. 79, 89, 22, 352..."
-          onkeydown="if(event.key==='Enter') loadThreatProfile()">
-        <button class="search-btn" onclick="loadThreatProfile()">ANALYSE</button>
-      </div>
-      <div id="threat-result">
-        <div style="color:var(--muted);font-family:var(--mono);font-size:0.72rem">
-          // Enter a CWE ID to see enriched threat profile from 3 data sources
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Row 5: OWASP Coverage -->
-  <div class="panel" style="margin-bottom:1.5rem">
-    <div class="panel-header">
-      <div class="panel-title">🛡 OWASP Top 10 — 2021 Coverage</div>
-      <div class="panel-badge">catalogue-wide mapping</div>
-    </div>
-    <div class="panel-body">
-      <div id="owasp-content">
-        <div class="loading"><div class="spin"></div>Loading OWASP coverage...</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Row 6: CWE Search -->
-  <div class="panel" style="margin-bottom:1.5rem">
-    <div class="panel-header">
-      <div class="panel-title">🔍 CWE Lookup</div>
-      <div class="panel-badge">instant search</div>
-    </div>
-    <div class="panel-body">
-      <div class="search-wrap">
-        <input
-          class="search-input"
-          type="text"
-          id="cwe-input"
-          placeholder="Enter CWE ID e.g. 79, 89, 22..."
-          onkeydown="if(event.key==='Enter') lookupCWE()"
-        >
-        <button class="search-btn" onclick="lookupCWE()">LOOKUP</button>
-      </div>
-      <div class="cwe-result" id="cwe-result">
-        <span style="color:var(--muted)">// Enter a CWE ID above to see full details</span>
-      </div>
-    </div>
   </div>
 
 </main>
@@ -1271,6 +1443,234 @@
 
     } catch(e) {
       el.innerHTML = `<div class="error-msg">Failed to load OWASP coverage</div>`;
+    }
+  }
+
+  // ── Nav page switching ────────────────────────────────────
+  function showPage(name) {
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
+    document.querySelector(`[onclick="showPage('${name}')"]`).classList.add('active');
+    document.getElementById(`page-${name}`).classList.add('active');
+    // Lazy load OWASP page when first opened
+    if (name === 'owasp') loadOWASPCoverage();
+  }
+
+  // ── Tab switching ─────────────────────────────────────────
+  function switchTab(name) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.querySelector(`[onclick="switchTab('${name}')"]`).classList.add('active');
+    document.getElementById(`tab-${name}`).classList.add('active');
+  }
+
+  // ── Search by name/keyword ────────────────────────────────
+  async function runSearch() {
+    const q = document.getElementById('main-search').value.trim();
+    const el = document.getElementById('search-results-list');
+    if (!q) return;
+
+    el.innerHTML = `<div class="loading"><div class="spin"></div>Searching for "${q}"...</div>`;
+    document.getElementById('detail-panel').style.display = 'none';
+
+    try {
+      const data = await fetchAPI(`/api/v1/search?q=${encodeURIComponent(q)}&limit=15`);
+      if (!data.results.length) {
+        el.innerHTML = `<div style="color:var(--muted);font-family:var(--mono);font-size:0.75rem">// No results found for "${q}"</div>`;
+        return;
+      }
+      el.innerHTML = `
+        <div style="font-family:var(--mono);font-size:0.68rem;color:var(--muted);margin-bottom:0.5rem">
+          ${data.total_results} results for "${q}" — click to see details
+        </div>
+        <div class="search-results">
+          ${data.results.map(r => `
+            <div class="search-result-item" onclick="loadCWEDetail('${r.cwe_id}')">
+              <span class="result-id">CWE-${r.cwe_id}</span>
+              <div>
+                <div class="result-name">${r.name}</div>
+                <div class="result-desc">${r.description}</div>
+              </div>
+              <span class="gap-badge ${r.likelihood_of_exploit === 'High' ? 'badge-high' : ''}"
+                style="${r.likelihood_of_exploit !== 'High' ? 'background:rgba(88,166,255,0.1);color:var(--accent2);border:1px solid rgba(88,166,255,0.2)' : ''}">
+                ${r.likelihood_of_exploit || 'Unspecified'}
+              </span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    } catch(e) {
+      el.innerHTML = `<div class="error-msg">Search failed — is the API running?</div>`;
+    }
+  }
+
+  // ── Search by ID ──────────────────────────────────────────
+  async function searchById() {
+    const id = document.getElementById('id-search').value.trim().replace(/^CWE-/i, '');
+    if (!id || !/^\d+$/.test(id)) return;
+    document.getElementById('search-results-list').innerHTML = '';
+    loadCWEDetail(id);
+  }
+
+  // ── Load full CWE detail into tabs ───────────────────────
+  async function loadCWEDetail(cweId) {
+    const panel = document.getElementById('detail-panel');
+    panel.style.display = 'block';
+    document.getElementById('detail-title').textContent = `CWE-${cweId}`;
+    switchTab('overview');
+
+    // Reset all tabs to loading
+    document.getElementById('cve-content').innerHTML = `<div class="loading"><div class="spin"></div>Loading CVE data from NVD...</div>`;
+    document.getElementById('mitre-content').innerHTML = `<div class="loading"><div class="spin"></div>Loading MITRE data...</div>`;
+    document.getElementById('owasp-tab-content').innerHTML = `<div class="loading"><div class="spin"></div>Loading OWASP mapping...</div>`;
+
+    // Load overview
+    try {
+      const d = await fetchAPI(`/api/v1/cwe/${cweId}`);
+      document.getElementById('detail-title').textContent = `CWE-${d.cwe_id}: ${d.name}`;
+      document.getElementById('overview-content').innerHTML = `
+        <div><span class="field-key">id:           </span><span class="field-val">CWE-${d.cwe_id}</span></div>
+        <div><span class="field-key">name:         </span><span class="field-val">${d.name}</span></div>
+        <div><span class="field-key">abstraction:  </span><span class="field-val">${d.abstraction}</span></div>
+        <div><span class="field-key">status:       </span><span class="field-val">${d.status}</span></div>
+        <div><span class="field-key">likelihood:   </span>
+          <span class="field-val" style="color:${LIKELIHOOD_COLOURS[d.likelihood_of_exploit]||'var(--muted)'}">
+            ${d.likelihood_of_exploit || 'Unspecified'}
+          </span>
+        </div>
+        <div><span class="field-key">consequences: </span><span class="field-val">${(d.common_consequences||[]).join(', ')||'None listed'}</span></div>
+        <div><span class="field-key">platforms:    </span><span class="field-val">${(d.applicable_platforms||[]).map(p=>p.name).filter(Boolean).slice(0,5).join(', ')||'Not specified'}</span></div>
+        <div><span class="field-key">resources:    </span><span class="field-val">${(d.affected_resources||[]).join(', ')||'Not specified'}</span></div>
+        <div style="margin-top:0.75rem"><span class="field-key">description:  </span>
+          <span class="field-val">${d.description}</span>
+        </div>
+        ${d.extended_description ? `<div style="margin-top:0.5rem"><span class="field-key">extended:     </span><span class="field-val">${d.extended_description.slice(0,400)}${d.extended_description.length>400?'...':''}</span></div>` : ''}
+      `;
+
+      // Load MITRE tab
+      const relHtml = (d.related_weaknesses||[]).slice(0,15).map(r =>
+        `<span class="rel-chip ${r.nature?.toLowerCase().replace(' ','')}">${r.nature}: CWE-${r.cwe_id}</span>`
+      ).join('') || '<span style="color:var(--muted)">No relationships listed</span>';
+
+      const detectionHtml = (d.detection_methods||[]).length
+        ? d.detection_methods.map(m => `<div style="padding:3px 0;border-bottom:1px solid var(--border);font-size:0.72rem">${m}</div>`).join('')
+        : '<span style="color:var(--muted)">No detection methods documented</span>';
+
+      document.getElementById('mitre-content').innerHTML = `
+        <div class="mitre-section">
+          <div class="mitre-label">Abstraction level</div>
+          <div class="mitre-value">
+            <span style="color:${ABSTRACTION_COLOURS[d.abstraction]||'var(--text)'}">
+              ${d.abstraction}
+            </span> —
+            ${d.abstraction === 'Pillar' ? 'Highest level — very broad category' :
+              d.abstraction === 'Class' ? 'Abstract class — independent of technology' :
+              d.abstraction === 'Base' ? 'Base level — most actionable for developers' :
+              d.abstraction === 'Variant' ? 'Variant — specific to a language or technology' :
+              'Compound weakness'}
+          </div>
+        </div>
+        <div class="mitre-section">
+          <div class="mitre-label">Related weaknesses (parent / child / peer)</div>
+          <div class="mitre-value">${relHtml}</div>
+        </div>
+        <div class="mitre-section">
+          <div class="mitre-label">Applicable platforms</div>
+          <div class="mitre-value">
+            ${(d.applicable_platforms||[]).map(p =>
+              `<span class="rel-chip">${p.type}: ${p.name} ${p.prevalence ? '· '+p.prevalence : ''}</span>`
+            ).join('') || '<span style="color:var(--muted)">Not specified</span>'}
+          </div>
+        </div>
+        <div class="mitre-section">
+          <div class="mitre-label">Detection methods</div>
+          <div class="mitre-value">${detectionHtml}</div>
+        </div>
+        <div class="insight-box" style="margin-top:0.75rem">
+          Source: MITRE CWE — https://cwe.mitre.org/data/definitions/${d.cwe_id}.html
+        </div>
+      `;
+
+    } catch(e) {
+      document.getElementById('overview-content').innerHTML =
+        `<span style="color:var(--high)">// CWE-${cweId} not found</span>`;
+    }
+
+    // Load CVE tab from NVD
+    try {
+      const nvd = await fetchAPI(`/api/v1/enrich/nvd/${cweId}?limit=10`);
+      const sevColours = { CRITICAL:'#f85149', HIGH:'#e3b341', MEDIUM:'#58a6ff', LOW:'#3fb950', UNKNOWN:'#6e7f94' };
+
+      if (!nvd.cves?.length) {
+        document.getElementById('cve-content').innerHTML =
+          `<div style="color:var(--muted);font-family:var(--mono);font-size:0.75rem">
+            ${nvd.error ? '// NVD unavailable — ' + nvd.error : '// No CVEs found in NVD for CWE-' + cweId}
+          </div>`;
+        return;
+      }
+
+      document.getElementById('cve-content').innerHTML = `
+        <div style="display:flex;gap:2rem;margin-bottom:1rem;font-family:var(--mono);font-size:0.75rem;flex-wrap:wrap">
+          <div>
+            <span style="color:#fff;font-weight:700">${nvd.total_cves_in_nvd?.toLocaleString()}</span>
+            <span style="color:var(--muted)"> total CVEs in NVD</span>
+          </div>
+          ${Object.entries(nvd.severity_breakdown||{}).filter(([k,v])=>v>0).map(([k,v])=>
+            `<div><span style="color:${sevColours[k]||'#fff'};font-weight:700">${v}</span>
+             <span style="color:var(--muted)"> ${k.toLowerCase()}</span></div>`
+          ).join('')}
+        </div>
+        <div class="cve-list">
+          ${nvd.cves.map(c => `
+            <div class="cve-item">
+              <div class="cve-header">
+                <a class="cve-id" href="${c.nvd_url}" target="_blank" rel="noopener noreferrer">${c.cve_id}</a>
+                <div style="display:flex;gap:0.5rem;align-items:center">
+                  <span style="font-family:var(--mono);font-size:0.65rem;color:var(--muted)">${c.published||''}</span>
+                  <span class="cve-score" style="background:${sevColours[c.severity]||'#6e7f94'}22;color:${sevColours[c.severity]||'#6e7f94'};border:1px solid ${sevColours[c.severity]||'#6e7f94'}44">
+                    ${c.severity}${c.cvss_score ? ' · ' + c.cvss_score : ''}
+                  </span>
+                </div>
+              </div>
+              <div class="cve-desc">${c.description}</div>
+            </div>
+          `).join('')}
+        </div>
+        <div class="insight-box" style="margin-top:0.75rem">
+          Data source: NIST National Vulnerability Database (NVD) API v2 — https://nvd.nist.gov
+        </div>
+      `;
+    } catch(e) {
+      document.getElementById('cve-content').innerHTML =
+        `<div class="error-msg">CVE data unavailable</div>`;
+    }
+
+    // Load OWASP tab
+    try {
+      const owasp = await fetchAPI(`/api/v1/enrich/owasp/${cweId}`);
+      document.getElementById('owasp-tab-content').innerHTML = owasp.in_owasp_top10 ? `
+        <div style="margin-bottom:0.75rem;font-family:var(--mono);font-size:0.75rem;color:var(--accent3)">
+          CWE-${cweId} is listed in OWASP Top 10 2021
+        </div>
+        ${owasp.owasp_categories.map(cat => `
+          <div style="padding:0.75rem;background:rgba(210,168,255,0.05);border:1px solid rgba(210,168,255,0.15);border-radius:6px;margin-bottom:0.5rem">
+            <div style="font-family:var(--mono);font-size:0.75rem;color:var(--accent4);font-weight:700">${cat.split('—')[0].trim()}</div>
+            <div style="font-family:var(--mono);font-size:0.68rem;color:var(--muted);margin-top:3px">${cat.split('—')[1]?.trim()||''}</div>
+          </div>
+        `).join('')}
+        <div class="insight-box" style="margin-top:0.75rem">
+          Source: OWASP Top 10 2021 — https://owasp.org/Top10/
+        </div>
+      ` : `
+        <div style="color:var(--muted);font-family:var(--mono);font-size:0.75rem">
+          CWE-${cweId} is not directly listed in OWASP Top 10 2021.
+          This does not mean it is not significant — many important weaknesses
+          are not in the Top 10 but remain high risk in specific contexts.
+        </div>
+      `;
+    } catch(e) {
+      document.getElementById('owasp-tab-content').innerHTML =
+        `<div class="error-msg">OWASP data unavailable</div>`;
     }
   }
 
