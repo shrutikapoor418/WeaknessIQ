@@ -1012,19 +1012,39 @@
 
     <div class="page-title">
       <h1>OWASP Top 10 Coverage</h1>
-      <p>// How the 969 CWEs map to OWASP Top 10 2021 — catalogue-wide view</p>
+      <p>// Click any category to see all CWEs mapped to it — with likelihood and descriptions</p>
     </div>
 
-    <div class="panel" style="margin-bottom:1.5rem">
-      <div class="panel-header">
-        <div class="panel-title">🛡 OWASP Top 10 — 2021</div>
-        <div class="panel-badge">catalogue-wide mapping</div>
-      </div>
-      <div class="panel-body">
-        <div id="owasp-content">
-          <div class="loading"><div class="spin"></div>Loading OWASP coverage...</div>
+    <div class="grid-2" style="align-items:start">
+
+      <!-- Left: Coverage bars -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">🛡 OWASP Top 10 — 2021</div>
+          <div class="panel-badge">click to explore</div>
+        </div>
+        <div class="panel-body">
+          <div id="owasp-content">
+            <div class="loading"><div class="spin"></div>Loading OWASP coverage...</div>
+          </div>
         </div>
       </div>
+
+      <!-- Right: Category detail -->
+      <div class="panel" id="owasp-detail-panel">
+        <div class="panel-header">
+          <div class="panel-title" id="owasp-detail-title">📂 Select a category</div>
+          <div class="panel-badge" id="owasp-detail-badge">click left</div>
+        </div>
+        <div class="panel-body">
+          <div id="owasp-detail-content">
+            <div style="color:var(--muted);font-family:var(--mono);font-size:0.72rem;text-align:center;padding:2rem 0">
+              // Click any OWASP category on the left to see all associated CWEs
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
 
   </div>
@@ -1032,47 +1052,68 @@
   <!-- ══ PAGE: CONSEQUENCES ══════════════════════════════ -->
   <div class="page-section" id="page-consequences">
     <div class="page-title">
-      <h1>Consequence Analysis</h1>
-      <p>// What attackers can achieve — grouped by impact type with actionable recommendations</p>
+      <h1>CWE Comparison & Recommendations</h1>
+      <p>// Compare two weaknesses side by side — consequences, CVEs, OWASP, fix recommendations</p>
     </div>
+
+    <!-- Input Panel -->
     <div class="panel" style="margin-bottom:1.5rem">
       <div class="panel-header">
-        <div class="panel-title">⚠️ Attacker Consequence Categories</div>
-        <div class="panel-badge">cross-catalogue · with recommendations</div>
+        <div class="panel-title">⚔️ Compare Two CWEs</div>
+        <div class="panel-badge">side by side analysis</div>
       </div>
       <div class="panel-body">
-        <div id="consequence-content">
-          <div class="loading"><div class="spin"></div>Loading consequence analysis...</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:0.75rem;align-items:end">
+          <div>
+            <div style="font-family:var(--mono);font-size:0.65rem;color:var(--muted);margin-bottom:0.4rem">CWE 1</div>
+            <input class="search-input" type="text" id="cmp-id1"
+              placeholder="e.g. 79 (XSS)"
+              onkeydown="if(event.key==='Enter') compareCWEs()">
+          </div>
+          <div>
+            <div style="font-family:var(--mono);font-size:0.65rem;color:var(--muted);margin-bottom:0.4rem">CWE 2</div>
+            <input class="search-input" type="text" id="cmp-id2"
+              placeholder="e.g. 89 (SQL Injection)"
+              onkeydown="if(event.key==='Enter') compareCWEs()">
+          </div>
+          <button class="search-btn" style="height:36px" onclick="compareCWEs()">COMPARE</button>
+        </div>
+        <div style="font-family:var(--mono);font-size:0.65rem;color:var(--muted);margin-top:0.5rem">
+          Try: 79 vs 89 · 22 vs 611 · 352 vs 287 · 787 vs 125
         </div>
       </div>
     </div>
+
+    <!-- Comparison Results -->
+    <div id="comparison-result"></div>
+
   </div>
 
   <!-- ══ PAGE: PDF REPORT ════════════════════════════════ -->
   <div class="page-section" id="page-report">
     <div class="page-title">
-      <h1>PDF Security Report</h1>
-      <p>// Generate a downloadable security report for any CWE or the full catalogue</p>
+      <h1>Security Report Generator</h1>
+      <p>// Full CWE report — impact, OWASP mapping, real CVEs, fix recommendations — downloadable as PDF</p>
     </div>
     <div class="panel" style="margin-bottom:1.5rem">
       <div class="panel-header">
-        <div class="panel-title">📄 Generate Report</div>
-        <div class="panel-badge">CWE + NVD + recommendations</div>
+        <div class="panel-title">📄 Generate CWE Security Report</div>
+        <div class="panel-badge">impact · OWASP · CVEs · recommendations</div>
       </div>
       <div class="panel-body">
-        <div style="margin-bottom:1rem">
-          <div style="font-family:var(--mono);font-size:0.72rem;color:var(--muted);margin-bottom:0.5rem">
-            Enter a CWE ID to generate a full security report:
-          </div>
-          <div class="search-wrap">
-            <input class="search-input" type="text" id="report-input"
-              placeholder="CWE ID e.g. 79, 89, 22..."
-              onkeydown="if(event.key==='Enter') generateReport()">
-            <button class="search-btn" onclick="generateReport()">GENERATE</button>
-            <button class="search-btn" style="background:var(--accent3)" onclick="generateFullReport()">FULL CATALOGUE</button>
-          </div>
+        <div style="font-family:var(--mono);font-size:0.72rem;color:var(--muted);margin-bottom:0.5rem">
+          Enter a CWE ID to generate a full security report:
         </div>
-        <div id="report-preview"></div>
+        <div class="search-wrap" style="margin-bottom:0.5rem">
+          <input class="search-input" type="text" id="report-input"
+            placeholder="CWE ID e.g. 79, 89, 22, 611..."
+            onkeydown="if(event.key==='Enter') generateReport()">
+          <button class="search-btn" onclick="generateReport()">GENERATE REPORT</button>
+        </div>
+        <div style="font-family:var(--mono);font-size:0.65rem;color:var(--muted)">
+          Report includes: description · consequence analysis · OWASP mapping · real CVEs from NVD · fix recommendations
+        </div>
+        <div id="report-preview" style="margin-top:1rem"></div>
       </div>
     </div>
   </div>
@@ -1452,6 +1493,7 @@
   // ── OWASP Coverage ────────────────────────────────────────
   async function loadOWASPCoverage() {
     const el = document.getElementById('owasp-content');
+    if (el.dataset.loaded) return;
     try {
       const data = await fetchAPI('/api/v1/enrich/owasp-coverage');
       const max = Math.max(...data.by_category.map(c => c.cwe_count), 1);
@@ -1467,10 +1509,16 @@
             <span style="color:var(--muted)"> OWASP coverage</span>
           </div>
         </div>
-        <div style="display:flex;flex-direction:column;gap:0.5rem">
+        <div style="font-family:var(--mono);font-size:0.62rem;color:var(--muted);margin-bottom:0.75rem">
+          Click any category to see all associated CWEs →
+        </div>
+        <div style="display:flex;flex-direction:column;gap:0.4rem">
           ${data.by_category.map(c => `
-            <div class="owasp-bar-row">
-              <span class="owasp-cat-name" title="${c.category}">${c.category.split('—')[0].trim()}</span>
+            <div class="owasp-bar-row" style="cursor:pointer;padding:4px 6px;border-radius:4px;transition:background 0.15s"
+              onmouseover="this.style.background='rgba(88,166,255,0.05)'"
+              onmouseout="this.style.background='transparent'"
+              onclick="loadOWASPCategory('${c.category.replace(/'/g,"\\'")}', ${c.cwe_count})">
+              <span class="owasp-cat-name" title="${c.category}" style="color:var(--accent2)">${c.category.split('—')[0].trim()}</span>
               <div class="lang-bar-track">
                 <div class="lang-bar-fill" style="background:var(--accent4)" data-width="${(c.cwe_count/max*100).toFixed(1)}%"></div>
               </div>
@@ -1479,9 +1527,8 @@
           `).join('')}
         </div>
         <div class="insight-box" style="margin-top:1rem">
-          OWASP Top 10 2021 maps ${data.cwes_in_owasp_top10} CWEs from the catalogue
-          (${data.coverage_percentage}%). Injection (A03) and Broken Access Control (A01)
-          account for the largest share — these should be the focus of any secure development programme.
+          Injection (A03) and Broken Access Control (A01) account for the largest share.
+          Click any category to explore the CWEs within it.
         </div>
       `;
 
@@ -1491,69 +1538,335 @@
         });
       }, 100);
 
+      el.dataset.loaded = '1';
+
     } catch(e) {
       el.innerHTML = `<div class="error-msg">Failed to load OWASP coverage</div>`;
     }
   }
 
-  // ── Consequence Analysis ──────────────────────────────────
-  async function loadConsequences() {
-    const el = document.getElementById('consequence-content');
-    if (el.dataset.loaded) return;
-    try {
-      const data = await fetchAPI('/api/v1/analysis/consequences');
-      const top = data.analysis.slice(0, 8);
-      const max = top[0]?.cwe_count || 1;
+  // ── OWASP Category Detail ─────────────────────────────────
+  async function loadOWASPCategory(category, count) {
+    const detailEl  = document.getElementById('owasp-detail-content');
+    const titleEl   = document.getElementById('owasp-detail-title');
+    const badgeEl   = document.getElementById('owasp-detail-badge');
 
-      el.innerHTML = `
-        <div style="display:flex;gap:2rem;margin-bottom:1.25rem;font-family:var(--mono);font-size:0.75rem;flex-wrap:wrap">
-          <div><span style="color:#fff;font-weight:700">${data.total_weaknesses_analysed}</span><span style="color:var(--muted)"> weaknesses analysed</span></div>
-          <div><span style="color:var(--accent2);font-weight:700">${data.consequence_categories}</span><span style="color:var(--muted)"> consequence categories</span></div>
+    const shortName = category.split('—')[0].trim();
+    titleEl.textContent = shortName;
+    badgeEl.textContent = `${count} CWEs`;
+    detailEl.innerHTML  = `<div class="loading"><div class="spin"></div>Loading CWEs for ${shortName}...</div>`;
+
+    // OWASP → CWE mapping (from nvd.py)
+    const OWASP_CWES = {
+      "A01:2021 — Broken Access Control":    ["22","23","35","59","200","201","264","276","284","285","352","359","425","497","538","566","601","639","651","862","863","913","922"],
+      "A02:2021 — Cryptographic Failures":   ["261","310","319","321","326","327","328","329","330","331","335","338","340","347","523","757","759","760","780","916"],
+      "A03:2021 — Injection":                ["20","74","77","78","79","80","83","88","89","90","91","93","94","95","96","97","98","116","184","470","564","610","643","917"],
+      "A04:2021 — Insecure Design":          ["73","183","209","213","256","266","269","280","311","312","313","316","419","430","434","451","501","522","525","539","598","602","636","650","653","656","799"],
+      "A05:2021 — Security Misconfiguration":["2","11","13","15","16","260","315","520","526","537","541","547","611","614","756","776","942","1021"],
+      "A06:2021 — Vulnerable Components":    ["937","1035","1104"],
+      "A07:2021 — Auth Failures":            ["255","259","287","288","290","294","295","297","300","302","304","306","307","346","384","521","613","620","640","798","940"],
+      "A08:2021 — Software Integrity Failures":["345","353","426","494","502","565","829","830","915"],
+      "A09:2021 — Logging Failures":         ["117","223","532","778"],
+      "A10:2021 — SSRF":                     ["918"],
+    };
+
+    // Find matching key
+    const matchKey = Object.keys(OWASP_CWES).find(k => k.includes(shortName.replace('A0','A').split(':')[0]) || category.includes(k.split('—')[0].trim()));
+    const cweIds   = OWASP_CWES[category] || OWASP_CWES[matchKey] || [];
+
+    if (!cweIds.length) {
+      detailEl.innerHTML = `<div style="color:var(--muted);font-family:var(--mono);font-size:0.72rem">No CWEs found for this category</div>`;
+      return;
+    }
+
+    try {
+      // Fetch CWE details for each ID (batch — first 15)
+      const cwes = await Promise.all(
+        cweIds.slice(0,15).map(id =>
+          fetchAPI(`/api/v1/cwe/${id}`).catch(() => null)
+        )
+      );
+      const valid = cwes.filter(Boolean);
+
+      detailEl.innerHTML = `
+        <div style="font-family:var(--mono);font-size:0.65rem;color:var(--muted);margin-bottom:0.75rem">
+          ${valid.length} of ${cweIds.length} CWEs shown — click any to see full details
         </div>
-        ${top.map(c => `
-          <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:1rem;margin-bottom:0.75rem">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;flex-wrap:wrap;gap:0.5rem">
-              <div style="font-weight:700;font-size:0.85rem;color:#fff">${c.consequence}</div>
-              <div style="display:flex;gap:0.75rem;font-family:var(--mono);font-size:0.68rem">
-                <span style="color:var(--accent2)">${c.cwe_count} CWEs (${c.percentage}%)</span>
-                <span style="color:var(--high)">${c.high_likelihood_count} High risk</span>
+        <div style="display:flex;flex-direction:column;gap:0.4rem">
+          ${valid.map(c => `
+            <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;
+              padding:0.6rem 0.75rem;cursor:pointer;transition:border-color 0.15s"
+              onmouseover="this.style.borderColor='var(--accent4)'"
+              onmouseout="this.style.borderColor='var(--border)'"
+              onclick="showPage('search');loadCWEDetail('${c.cwe_id}')">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem">
+                <span style="font-family:var(--mono);font-size:0.68rem;color:var(--accent4);font-weight:700;min-width:65px">CWE-${c.cwe_id}</span>
+                <span style="font-size:0.75rem;color:var(--text);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.name}</span>
+                <span style="font-family:var(--mono);font-size:0.6rem;padding:2px 7px;border-radius:4px;white-space:nowrap;
+                  background:${c.likelihood_of_exploit==='High'?'rgba(248,81,73,0.1)':'rgba(88,166,255,0.08)'};
+                  color:${c.likelihood_of_exploit==='High'?'var(--high)':c.likelihood_of_exploit==='Medium'?'var(--med)':'var(--muted)'};
+                  border:1px solid ${c.likelihood_of_exploit==='High'?'rgba(248,81,73,0.2)':'var(--border)'}">
+                  ${c.likelihood_of_exploit||'—'}
+                </span>
+              </div>
+              <div style="font-family:var(--mono);font-size:0.62rem;color:var(--muted);margin-top:3px;
+                white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                ${c.description?.slice(0,100)}${c.description?.length>100?'...':''}
               </div>
             </div>
-            <div class="bar-track" style="margin-bottom:0.75rem">
-              <div class="bar-fill" style="width:${(c.cwe_count/max*100).toFixed(0)}%;background:var(--accent2)"></div>
+          `).join('')}
+        </div>
+        <div class="insight-box" style="margin-top:0.75rem">
+          Click any CWE to open full details — CVEs, MITRE mapping, OWASP info
+        </div>
+      `;
+    } catch(e) {
+      detailEl.innerHTML = `<div class="error-msg">Failed to load category details</div>`;
+    }
+  }
+
+  // ── CWE Comparison ───────────────────────────────────────
+  async function compareCWEs() {
+    const id1 = document.getElementById('cmp-id1').value.trim().replace(/^CWE-/i,'');
+    const id2 = document.getElementById('cmp-id2').value.trim().replace(/^CWE-/i,'');
+    const el  = document.getElementById('comparison-result');
+
+    if (!id1 || !id2 || !/^\d+$/.test(id1) || !/^\d+$/.test(id2)) {
+      el.innerHTML = `<div class="error-msg">// Enter valid numeric CWE IDs in both fields</div>`;
+      return;
+    }
+
+    el.innerHTML = `<div class="loading"><div class="spin"></div>Fetching data for CWE-${id1} and CWE-${id2}...</div>`;
+
+    try {
+      const [c1, c2, nvd1, nvd2, owasp1, owasp2, rec1, rec2] = await Promise.all([
+        fetchAPI(`/api/v1/cwe/${id1}`),
+        fetchAPI(`/api/v1/cwe/${id2}`),
+        fetchAPI(`/api/v1/enrich/nvd/${id1}?limit=3`),
+        fetchAPI(`/api/v1/enrich/nvd/${id2}?limit=3`),
+        fetchAPI(`/api/v1/enrich/owasp/${id1}`),
+        fetchAPI(`/api/v1/enrich/owasp/${id2}`),
+        fetchAPI(`/api/v1/recommendations/${id1}`),
+        fetchAPI(`/api/v1/recommendations/${id2}`),
+      ]);
+
+      const lCol = (l) => l === 'High' ? 'var(--high)' : l === 'Medium' ? 'var(--med)' : l === 'Low' ? 'var(--low)' : 'var(--muted)';
+      const sevColours = { CRITICAL:'#f85149', HIGH:'#e3b341', MEDIUM:'#58a6ff', LOW:'#3fb950', UNKNOWN:'#6e7f94' };
+
+      el.innerHTML = `
+
+        <!-- ── Comparison Table ── -->
+        <div class="panel" style="margin-bottom:1.5rem">
+          <div class="panel-header">
+            <div class="panel-title">📊 Side-by-Side Comparison</div>
+            <div class="panel-badge">CWE-${id1} vs CWE-${id2}</div>
+          </div>
+          <div class="panel-body" style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse;font-family:var(--mono);font-size:0.72rem">
+              <thead>
+                <tr>
+                  <th style="background:#1c2330;color:#fff;padding:10px 14px;text-align:left;width:160px">Property</th>
+                  <th style="background:rgba(88,166,255,0.15);color:var(--accent2);padding:10px 14px;text-align:left;border-bottom:2px solid var(--accent2)">
+                    CWE-${id1}<br><span style="font-size:0.62rem;font-weight:400;color:var(--text)">${c1.name}</span>
+                  </th>
+                  <th style="background:rgba(247,129,102,0.15);color:var(--accent);padding:10px 14px;text-align:left;border-bottom:2px solid var(--accent)">
+                    CWE-${id2}<br><span style="font-size:0.62rem;font-weight:400;color:var(--text)">${c2.name}</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                ${compRow('Abstraction', c1.abstraction, c2.abstraction)}
+                ${compRow('Status', c1.status, c2.status)}
+                ${compRowColored('Likelihood', c1.likelihood_of_exploit||'Unspecified', c2.likelihood_of_exploit||'Unspecified', lCol(c1.likelihood_of_exploit), lCol(c2.likelihood_of_exploit))}
+                ${compRow('Consequences', (c1.common_consequences||[]).join(', ')||'—', (c2.common_consequences||[]).join(', ')||'—')}
+                ${compRow('Platforms', (c1.applicable_platforms||[]).map(p=>p.name).filter(Boolean).slice(0,3).join(', ')||'—', (c2.applicable_platforms||[]).map(p=>p.name).filter(Boolean).slice(0,3).join(', ')||'—')}
+                ${compRow('Detection methods', (c1.detection_methods||[]).length ? c1.detection_methods.slice(0,2).join(', ') : '⚠️ None documented', (c2.detection_methods||[]).length ? c2.detection_methods.slice(0,2).join(', ') : '⚠️ None documented')}
+                ${compRowColored('NVD CVE count', (nvd1.total_cves_in_nvd||0).toLocaleString(), (nvd2.total_cves_in_nvd||0).toLocaleString(), nvd1.total_cves_in_nvd > nvd2.total_cves_in_nvd ? 'var(--high)' : 'var(--muted)', nvd2.total_cves_in_nvd > nvd1.total_cves_in_nvd ? 'var(--high)' : 'var(--muted)')}
+                ${compRow('Critical CVEs', (nvd1.severity_breakdown?.CRITICAL||0).toString(), (nvd2.severity_breakdown?.CRITICAL||0).toString())}
+                ${compRow('OWASP Top 10', owasp1.in_owasp_top10 ? owasp1.owasp_categories[0]?.split('—')[0]?.trim() : '✗ Not listed', owasp2.in_owasp_top10 ? owasp2.owasp_categories[0]?.split('—')[0]?.trim() : '✗ Not listed')}
+                ${compRowColored('Priority', rec1.priority, rec2.priority, rec1.priority==='CRITICAL'?'var(--high)':rec1.priority==='HIGH'?'var(--med)':'var(--accent3)', rec2.priority==='CRITICAL'?'var(--high)':rec2.priority==='HIGH'?'var(--med)':'var(--accent3)')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ── Recommendations side by side ── -->
+        <div class="grid-2">
+
+          <!-- CWE 1 Recommendations -->
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title" style="color:var(--accent2)">Fix Recommendations — CWE-${id1}</div>
+              <span style="font-family:var(--mono);font-size:0.62rem;padding:2px 8px;border-radius:4px;background:rgba(88,166,255,0.1);color:var(--accent2);border:1px solid rgba(88,166,255,0.2)">${rec1.priority}</span>
             </div>
-            <div style="margin-bottom:0.5rem">
-              <div style="font-family:var(--mono);font-size:0.62rem;color:var(--muted);margin-bottom:0.3rem">TOP CWEs</div>
-              <div style="display:flex;flex-wrap:wrap;gap:4px">
-                ${c.top_cwes.map(cw => `
-                  <span style="font-family:var(--mono);font-size:0.62rem;padding:2px 8px;border-radius:4px;
-                    background:${cw.likelihood==='High'?'rgba(248,81,73,0.1)':'rgba(88,166,255,0.1)'};
-                    color:${cw.likelihood==='High'?'var(--high)':'var(--accent2)'};
-                    border:1px solid ${cw.likelihood==='High'?'rgba(248,81,73,0.25)':'rgba(88,166,255,0.2)'};
-                    cursor:pointer" onclick="showPage('search');loadCWEDetail('${cw.cwe_id}')">
-                    CWE-${cw.cwe_id}
-                  </span>
+            <div class="panel-body">
+              ${rec1.recommendations.map(r => `
+                <div style="display:flex;gap:0.5rem;padding:5px 0;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:0.68rem;color:var(--text)">
+                  <span style="color:var(--accent2)">▸</span><span>${r.recommendation}</span>
+                </div>
+              `).join('')}
+              <div style="margin-top:0.75rem">
+                ${rec1.general_advice.map(a => `
+                  <div style="display:flex;gap:0.5rem;padding:3px 0;font-family:var(--mono);font-size:0.65rem;color:var(--muted)">
+                    <span style="color:var(--accent3)">→</span><span>${a}</span>
+                  </div>
                 `).join('')}
               </div>
             </div>
-            <div>
-              <div style="font-family:var(--mono);font-size:0.62rem;color:var(--muted);margin-bottom:0.3rem">RECOMMENDATIONS</div>
-              ${c.recommendations.slice(0,3).map(r => `
-                <div style="display:flex;gap:0.5rem;padding:3px 0;font-family:var(--mono);font-size:0.68rem;color:var(--text)">
-                  <span style="color:var(--accent3)">▸</span><span>${r}</span>
+          </div>
+
+          <!-- CWE 2 Recommendations -->
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title" style="color:var(--accent)">Fix Recommendations — CWE-${id2}</div>
+              <span style="font-family:var(--mono);font-size:0.62rem;padding:2px 8px;border-radius:4px;background:rgba(247,129,102,0.1);color:var(--accent);border:1px solid rgba(247,129,102,0.2)">${rec2.priority}</span>
+            </div>
+            <div class="panel-body">
+              ${rec2.recommendations.map(r => `
+                <div style="display:flex;gap:0.5rem;padding:5px 0;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:0.68rem;color:var(--text)">
+                  <span style="color:var(--accent)">▸</span><span>${r.recommendation}</span>
                 </div>
               `).join('')}
+              <div style="margin-top:0.75rem">
+                ${rec2.general_advice.map(a => `
+                  <div style="display:flex;gap:0.5rem;padding:3px 0;font-family:var(--mono);font-size:0.65rem;color:var(--muted)">
+                    <span style="color:var(--accent3)">→</span><span>${a}</span>
+                  </div>
+                `).join('')}
+              </div>
             </div>
           </div>
-        `).join('')}
-        <div class="insight-box">${data.insight}</div>
+        </div>
+
+        <!-- ── CVEs side by side ── -->
+        <div class="grid-2" style="margin-top:0">
+
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">Real CVEs — CWE-${id1}</div>
+              <div class="panel-badge">${(nvd1.total_cves_in_nvd||0).toLocaleString()} total in NVD</div>
+            </div>
+            <div class="panel-body">
+              ${(nvd1.cves||[]).slice(0,3).map(c => `
+                <div class="cve-item">
+                  <div class="cve-header">
+                    <a class="cve-id" href="${c.nvd_url}" target="_blank" rel="noopener noreferrer">${c.cve_id}</a>
+                    <span class="cve-score" style="background:${sevColours[c.severity]||'#6e7f94'}22;color:${sevColours[c.severity]||'#6e7f94'};border:1px solid ${sevColours[c.severity]||'#6e7f94'}44">
+                      ${c.severity} · ${c.cvss_score||'N/A'}
+                    </span>
+                  </div>
+                  <div class="cve-desc">${c.description}</div>
+                </div>
+              `).join('') || '<div style="color:var(--muted);font-family:var(--mono);font-size:0.7rem">No CVEs available</div>'}
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <div class="panel-title">Real CVEs — CWE-${id2}</div>
+              <div class="panel-badge">${(nvd2.total_cves_in_nvd||0).toLocaleString()} total in NVD</div>
+            </div>
+            <div class="panel-body">
+              ${(nvd2.cves||[]).slice(0,3).map(c => `
+                <div class="cve-item">
+                  <div class="cve-header">
+                    <a class="cve-id" href="${c.nvd_url}" target="_blank" rel="noopener noreferrer">${c.cve_id}</a>
+                    <span class="cve-score" style="background:${sevColours[c.severity]||'#6e7f94'}22;color:${sevColours[c.severity]||'#6e7f94'};border:1px solid ${sevColours[c.severity]||'#6e7f94'}44">
+                      ${c.severity} · ${c.cvss_score||'N/A'}
+                    </span>
+                  </div>
+                  <div class="cve-desc">${c.description}</div>
+                </div>
+              `).join('') || '<div style="color:var(--muted);font-family:var(--mono);font-size:0.7rem">No CVEs available</div>'}
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Export button ── -->
+        <div style="text-align:center;margin-top:1rem">
+          <button class="search-btn" style="padding:0.7rem 2rem"
+            onclick="exportComparison('${id1}','${id2}')">
+            ⬇ Export Comparison as PDF
+          </button>
+        </div>
+
+        <!-- Hidden print area -->
+        <div id="compare-print" style="display:none">
+          ${buildComparisonPrint(id1, id2, c1, c2, nvd1, nvd2, owasp1, owasp2, rec1, rec2)}
+        </div>
       `;
-      el.dataset.loaded = '1';
 
     } catch(e) {
-      el.innerHTML = `<div class="error-msg">Failed to load — is the API running?</div>`;
+      el.innerHTML = `<div class="error-msg">// Failed — check CWE IDs are valid and API is running</div>`;
     }
   }
+
+  function compRow(label, v1, v2) {
+    return `<tr>
+      <td style="padding:8px 14px;border-bottom:1px solid var(--border);color:var(--muted);font-size:0.68rem">${label}</td>
+      <td style="padding:8px 14px;border-bottom:1px solid var(--border);color:var(--text)">${v1}</td>
+      <td style="padding:8px 14px;border-bottom:1px solid var(--border);color:var(--text)">${v2}</td>
+    </tr>`;
+  }
+
+  function compRowColored(label, v1, v2, col1, col2) {
+    return `<tr>
+      <td style="padding:8px 14px;border-bottom:1px solid var(--border);color:var(--muted);font-size:0.68rem">${label}</td>
+      <td style="padding:8px 14px;border-bottom:1px solid var(--border);color:${col1};font-weight:700">${v1}</td>
+      <td style="padding:8px 14px;border-bottom:1px solid var(--border);color:${col2};font-weight:700">${v2}</td>
+    </tr>`;
+  }
+
+  function buildComparisonPrint(id1, id2, c1, c2, nvd1, nvd2, owasp1, owasp2, rec1, rec2) {
+    return `
+      <h1 style="color:#1c2330;border-bottom:3px solid #58a6ff;padding-bottom:0.5rem;font-family:Arial">
+        Security Comparison: CWE-${id1} vs CWE-${id2}
+      </h1>
+      <p style="color:#666;font-size:0.85rem;font-family:Arial">Generated by WeaknessIQ · ${new Date().toLocaleDateString()}</p>
+
+      <table style="width:100%;border-collapse:collapse;font-family:Arial;font-size:0.85rem;margin:1rem 0">
+        <tr><th style="background:#1c2330;color:#fff;padding:8px 12px;text-align:left">Property</th>
+            <th style="background:#1c4a7a;color:#fff;padding:8px 12px">CWE-${id1}: ${c1.name}</th>
+            <th style="background:#7a2c1c;color:#fff;padding:8px 12px">CWE-${id2}: ${c2.name}</th></tr>
+        <tr><td style="padding:7px 12px;border-bottom:1px solid #eee">Abstraction</td><td style="padding:7px 12px;border-bottom:1px solid #eee;text-align:center">${c1.abstraction}</td><td style="padding:7px 12px;border-bottom:1px solid #eee;text-align:center">${c2.abstraction}</td></tr>
+        <tr style="background:#f9f9f9"><td style="padding:7px 12px;border-bottom:1px solid #eee">Likelihood</td><td style="padding:7px 12px;border-bottom:1px solid #eee;text-align:center;font-weight:bold;color:${c1.likelihood_of_exploit==='High'?'#c0392b':'#333'}">${c1.likelihood_of_exploit||'Unspecified'}</td><td style="padding:7px 12px;border-bottom:1px solid #eee;text-align:center;font-weight:bold;color:${c2.likelihood_of_exploit==='High'?'#c0392b':'#333'}">${c2.likelihood_of_exploit||'Unspecified'}</td></tr>
+        <tr><td style="padding:7px 12px;border-bottom:1px solid #eee">Consequences</td><td style="padding:7px 12px;border-bottom:1px solid #eee;text-align:center">${(c1.common_consequences||[]).join(', ')||'—'}</td><td style="padding:7px 12px;border-bottom:1px solid #eee;text-align:center">${(c2.common_consequences||[]).join(', ')||'—'}</td></tr>
+        <tr style="background:#f9f9f9"><td style="padding:7px 12px;border-bottom:1px solid #eee">NVD CVE Count</td><td style="padding:7px 12px;border-bottom:1px solid #eee;text-align:center;font-weight:bold">${(nvd1.total_cves_in_nvd||0).toLocaleString()}</td><td style="padding:7px 12px;border-bottom:1px solid #eee;text-align:center;font-weight:bold">${(nvd2.total_cves_in_nvd||0).toLocaleString()}</td></tr>
+        <tr><td style="padding:7px 12px;border-bottom:1px solid #eee">OWASP Top 10</td><td style="padding:7px 12px;border-bottom:1px solid #eee;text-align:center">${owasp1.in_owasp_top10?owasp1.owasp_categories[0]?.split('—')[0]?.trim():'Not listed'}</td><td style="padding:7px 12px;border-bottom:1px solid #eee;text-align:center">${owasp2.in_owasp_top10?owasp2.owasp_categories[0]?.split('—')[0]?.trim():'Not listed'}</td></tr>
+        <tr style="background:#f9f9f9"><td style="padding:7px 12px">Priority</td><td style="padding:7px 12px;text-align:center;font-weight:bold;color:${rec1.priority==='CRITICAL'?'#c0392b':rec1.priority==='HIGH'?'#e67e22':'#27ae60'}">${rec1.priority}</td><td style="padding:7px 12px;text-align:center;font-weight:bold;color:${rec2.priority==='CRITICAL'?'#c0392b':rec2.priority==='HIGH'?'#e67e22':'#27ae60'}">${rec2.priority}</td></tr>
+      </table>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:1.5rem;font-family:Arial">
+        <div>
+          <h2 style="color:#1c4a7a;font-size:1rem;border-left:4px solid #58a6ff;padding-left:0.75rem">Fix Recommendations — CWE-${id1}</h2>
+          ${rec1.recommendations.map(r=>`<p style="font-size:0.85rem;margin:4px 0">▸ ${r.recommendation}</p>`).join('')}
+          <h3 style="font-size:0.9rem;color:#666;margin-top:0.75rem">Sample CVEs</h3>
+          ${(nvd1.cves||[]).slice(0,2).map(c=>`<p style="font-size:0.8rem;margin:4px 0"><strong>${c.cve_id}</strong> (${c.severity} · ${c.cvss_score||'N/A'}): ${c.description?.slice(0,120)}...</p>`).join('')}
+        </div>
+        <div>
+          <h2 style="color:#7a2c1c;font-size:1rem;border-left:4px solid #f78166;padding-left:0.75rem">Fix Recommendations — CWE-${id2}</h2>
+          ${rec2.recommendations.map(r=>`<p style="font-size:0.85rem;margin:4px 0">▸ ${r.recommendation}</p>`).join('')}
+          <h3 style="font-size:0.9rem;color:#666;margin-top:0.75rem">Sample CVEs</h3>
+          ${(nvd2.cves||[]).slice(0,2).map(c=>`<p style="font-size:0.8rem;margin:4px 0"><strong>${c.cve_id}</strong> (${c.severity} · ${c.cvss_score||'N/A'}): ${c.description?.slice(0,120)}...</p>`).join('')}
+        </div>
+      </div>
+      <p style="font-size:0.75rem;color:#999;margin-top:2rem;border-top:1px solid #eee;padding-top:0.75rem;font-family:Arial">
+        Data sources: MITRE CWE · NIST NVD API v2 · OWASP Top 10 2021 · WeaknessIQ Security Intelligence Platform
+      </p>
+    `;
+  }
+
+  function exportComparison(id1, id2) {
+    const content = document.getElementById('compare-print').innerHTML;
+    const win = window.open('','_blank');
+    win.document.write(`<html><head><title>CWE-${id1} vs CWE-${id2}</title>
+      <style>body{padding:2rem;max-width:950px;margin:0 auto}@media print{body{padding:0}}</style>
+      </head><body>${content}
+      <script>window.onload=()=>window.print()<\/script></body></html>`);
+    win.document.close();
+  }
+
+  // ── Nav page switching ────────────────────────────────────
 
   // ── PDF Report Generation ─────────────────────────────────
   async function generateReport() {
@@ -1791,7 +2104,6 @@
     document.querySelector(`[onclick="showPage('${name}')"]`).classList.add('active');
     document.getElementById(`page-${name}`).classList.add('active');
     if (name === 'owasp') loadOWASPCoverage();
-    if (name === 'consequences') loadConsequences();
   }
 
   // ── Tab switching ─────────────────────────────────────────
@@ -2023,7 +2335,6 @@
       loadLanguageRisk(),
       loadAbstraction(),
       loadGaps(),
-      loadOWASPCoverage(),
     ]);
   }
 
