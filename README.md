@@ -5,6 +5,8 @@ and enriches it with real CVE data from NIST NVD and OWASP Top 10 2021 mappings.
 
 **ELE8094 Software Assurance — Assignment 2 | PureSecure Consultancy Prototype**
 
+**Developed by:** Shruti Kapoor | Student ID: 40472240 | Queen's University Belfast
+
 ---
 
 ## What It Does
@@ -12,8 +14,10 @@ and enriches it with real CVE data from NIST NVD and OWASP Top 10 2021 mappings.
 - Ingests 969 CWE weakness definitions from MITRE XML
 - Links each CWE to real CVEs from the NIST National Vulnerability Database
 - Maps weaknesses to OWASP Top 10 2021 categories
-- Provides a live dashboard with exploit likelihood charts, language risk profiles,
-  detection gap analysis, and enriched threat profiles
+- Search vulnerabilities by name or keyword (e.g. "buffer overflow", "injection")
+- Compare two CWEs side by side with consequence analysis and fix recommendations
+- Generate downloadable PDF security reports per CWE
+- Live dashboard with 6 pages: Dashboard, Search, Threat Profile, Consequences, OWASP, PDF Report
 
 ---
 
@@ -45,17 +49,11 @@ pip install fastapi uvicorn sqlalchemy aiosqlite slowapi python-dotenv requests 
 python3 backend/parser/downloader.py
 ```
 
-This downloads the official CWE XML from `cwe.mitre.org` over verified TLS.
-The file is saved to `data/cwec_latest.xml`.
-
 ### 4. Start the API (Terminal 1)
 
 ```bash
 python3 -m uvicorn backend.api.main:app --reload
 ```
-
-The API starts at `http://localhost:8000`.
-On first run it automatically parses the CWE XML and loads 969 entries into the database.
 
 ### 5. Start the frontend (Terminal 2)
 
@@ -79,16 +77,32 @@ http://localhost:3000
 | `GET /health` | Health check |
 | `GET /api/v1/summary` | Catalogue statistics |
 | `GET /api/v1/cwe/{id}` | Single CWE lookup |
+| `GET /api/v1/search?q=...` | Search CWEs by name or keyword |
 | `GET /api/v1/analysis/exploit-likelihood` | Likelihood distribution |
 | `GET /api/v1/analysis/language-risk` | Language risk profiles |
 | `GET /api/v1/analysis/detection-gaps` | Detection blind spots |
 | `GET /api/v1/analysis/relationships/{id}` | Relationship chain traversal |
+| `GET /api/v1/analysis/consequences` | Consequence category analysis |
 | `GET /api/v1/enrich/nvd/{id}` | Real CVEs from NIST NVD |
 | `GET /api/v1/enrich/owasp/{id}` | OWASP Top 10 mapping |
 | `GET /api/v1/enrich/owasp-coverage` | Catalogue-wide OWASP coverage |
 | `GET /api/v1/enrich/threat-profile/{id}` | Full enriched threat profile |
+| `GET /api/v1/recommendations/{id}` | Actionable fix recommendations |
 
-Interactive API docs available at `http://localhost:8000/docs`
+Interactive API docs: `http://localhost:8000/docs`
+
+---
+
+## Dashboard Pages
+
+| Page | What It Shows |
+|---|---|
+| **Dashboard** | Stat cards, exploit likelihood, language risk, abstraction breakdown, blind spots |
+| **Search** | Search by name/keyword or CWE ID with CVE, MITRE, OWASP tabs |
+| **Threat Profile** | Enriched profile combining MITRE + NVD + OWASP in one view |
+| **Consequences** | Compare two CWEs side by side — consequences, CVEs, fix recommendations |
+| **OWASP** | Clickable OWASP Top 10 categories showing all mapped CWEs |
+| **PDF Report** | Generate downloadable security report for any CWE |
 
 ---
 
@@ -98,26 +112,26 @@ Interactive API docs available at `http://localhost:8000/docs`
 WeaknessIQ/
 ├── backend/
 │   ├── api/
-│   │   └── main.py          # FastAPI application + security headers
+│   │   └── main.py              # FastAPI app — 14 endpoints, security headers
 │   ├── analysis/
-│   │   └── insights.py      # Analysis engine (6 insight types)
+│   │   └── insights.py          # Analysis engine (7 insight types)
 │   ├── db/
-│   │   ├── database.py      # SQLite + SQLAlchemy ORM
-│   │   └── loader.py        # CWE data loader
+│   │   ├── database.py          # SQLite + SQLAlchemy ORM
+│   │   └── loader.py            # CWE data loader
 │   ├── integrations/
-│   │   └── nvd.py           # NIST NVD + OWASP integration
+│   │   └── nvd.py               # NIST NVD + OWASP integration
 │   └── parser/
-│       ├── cwe_parser.py    # Secure XML parser (XXE prevention)
-│       └── downloader.py    # TLS-verified CWE downloader
+│       ├── cwe_parser.py        # Secure XML parser (XXE prevention)
+│       └── downloader.py        # TLS-verified CWE downloader
 ├── frontend/
-│   └── index.html           # Dashboard (HTML/JS)
+│   └── index.html               # Dashboard (HTML/JS — 6 pages)
 ├── tests/
-│   ├── test_parser.py       # Parser security tests
-│   └── test_api.py          # API security tests
-├── data/                    # CWE XML data (gitignored)
-├── .gitlab-ci.yml           # CI/CD pipeline
-├── Dockerfile               # Hardened container
-└── requirements.txt         # Pinned dependencies
+│   ├── test_parser.py           # Parser security tests
+│   └── test_api.py              # API security tests
+├── data/                        # CWE XML data (gitignored)
+├── .gitlab-ci.yml               # CI/CD pipeline with SAST
+├── Dockerfile                   # Hardened container (non-root)
+└── requirements.txt             # Dependencies
 ```
 
 ---
@@ -135,6 +149,7 @@ WeaknessIQ/
 | Rate limiting | slowapi on all endpoints | CWE-307 |
 | Secret management | Environment variables only | CWE-798 |
 | Security headers | CSP, HSTS, X-Frame-Options on all responses | CWE-16 |
+| Input validation | Regex + allowlist on all user inputs | CWE-20 |
 
 ---
 
@@ -143,6 +158,18 @@ WeaknessIQ/
 - **MITRE CWE** — https://cwe.mitre.org
 - **NIST NVD API v2** — https://nvd.nist.gov/developers/vulnerabilities
 - **OWASP Top 10 2021** — https://owasp.org/Top10/
+
+---
+
+## CI/CD Pipeline
+
+Every commit triggers:
+1. Secret detection — blocks merge if credentials detected
+2. Bandit SAST — Python security linting
+3. Semgrep — OWASP Top 10 rule set
+4. Safety — dependency CVE check
+5. Unit tests — with coverage reporting
+6. Trivy — container image scan (main branch)
 
 ---
 
