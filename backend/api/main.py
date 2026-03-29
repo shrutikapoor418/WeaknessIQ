@@ -350,3 +350,190 @@ async def get_threat_profile(request: Request, cwe_id: str,
     except Exception as e:
         logger.error(f"Threat profile error: {e}")
         raise HTTPException(status_code=500, detail="Threat profile generation failed")
+
+
+# ── Consequence Analysis ──────────────────────────────────────────────────────
+@app.get("/api/v1/analysis/consequences")
+@limiter.limit("20/minute")
+async def consequence_analysis(
+    request: Request,
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    Analyses what attackers can ACHIEVE by exploiting weaknesses.
+    Groups all 969 CWEs by consequence type — Confidentiality, Integrity,
+    Availability, Access Control, etc.
+    Unique cross-catalogue consequence view not available on CWE website.
+    """
+    result = await session.execute(select(CWEModel))
+    entries = result.scalars().all()
+
+    from collections import Counter, defaultdict
+    consequence_map = defaultdict(list)
+
+    for entry in entries:
+        for c in (entry.common_consequences or []):
+            consequence_map[c].append({
+                "cwe_id": entry.cwe_id,
+                "name": entry.name,
+                "likelihood": entry.likelihood_of_exploit,
+                "abstraction": entry.abstraction,
+            })
+
+    total = len(entries)
+    analysis = []
+    for consequence, cwes in sorted(consequence_map.items(), key=lambda x: -len(x[1])):
+        high_count = sum(1 for c in cwes if c["likelihood"] == "High")
+        analysis.append({
+            "consequence": consequence,
+            "cwe_count": len(cwes),
+            "percentage": round(len(cwes) / total * 100, 1),
+            "high_likelihood_count": high_count,
+            "top_cwes": sorted(cwes, key=lambda x: x["likelihood"] == "High", reverse=True)[:5],
+        })
+
+    # Recommendations per consequence
+    recommendations = {
+        "Confidentiality": [
+            "Implement strict input validation and output encoding",
+            "Use parameterised queries to prevent data exfiltration via injection",
+            "Apply least privilege — limit what data each component can access",
+            "Encrypt sensitive data at rest and in transit (TLS 1.3 minimum)",
+        ],
+        "Integrity": [
+            "Validate all inputs before processing (allowlist, not blocklist)",
+            "Use integrity checks (checksums, digital signatures) on critical data",
+            "Implement proper authorisation — verify user can modify the resource",
+            "Use ORM or parameterised queries to prevent data tampering via injection",
+        ],
+        "Availability": [
+            "Implement rate limiting on all public endpoints",
+            "Set file size caps and timeouts on all input processing",
+            "Use connection pooling and resource limits",
+            "Implement circuit breakers for external service calls",
+        ],
+        "Access Control": [
+            "Enforce authentication on every sensitive endpoint",
+            "Apply role-based access control (RBAC)",
+            "Validate session tokens on every request",
+            "Implement the principle of least privilege throughout",
+        ],
+        "Non-Repudiation": [
+            "Implement comprehensive audit logging",
+            "Use digital signatures for critical operations",
+            "Store immutable logs with timestamps",
+        ],
+        "Accountability": [
+            "Log all security-relevant events with user identity",
+            "Implement multi-factor authentication",
+            "Maintain audit trails for sensitive operations",
+        ],
+    }
+
+    for item in analysis:
+        item["recommendations"] = recommendations.get(
+            item["consequence"],
+            ["Apply general secure coding practices", "Conduct regular security testing"]
+        )
+
+    return {
+        "total_weaknesses_analysed": total,
+        "consequence_categories": len(analysis),
+        "analysis": analysis,
+        "insight": (
+            "Confidentiality and Integrity are the most impacted properties across the CWE catalogue. "
+            "Addressing root-cause weaknesses in these categories provides the highest security return."
+        )
+    }
+
+
+# ── Recommendations by CWE ────────────────────────────────────────────────────
+@app.get("/api/v1/recommendations/{cwe_id}")
+@limiter.limit("20/minute")
+async def get_recommendations(
+    request: Request,
+    cwe_id: str,
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    Returns actionable security recommendations for a specific CWE.
+    Combines CWE details, OWASP guidance, and consequence-based advice.
+    """
+    if not str(cwe_id).isdigit():
+        raise HTTPException(status_code=400, detail="CWE ID must be numeric")
+
+    cwe = await insights.get_cwe_by_id(session, cwe_id)
+    if not cwe:
+        raise HTTPException(status_code=404, detail=f"CWE-{cwe_id} not found")
+
+    owasp = get_owasp_mapping(cwe_id)
+
+    # Build specific recommendations based on CWE data
+    recs = []
+
+    # Consequence-based recommendations
+    consequence_recs = {
+        "Confidentiality": "Encrypt sensitive data and apply least privilege access controls",
+        "Integrity": "Validate all inputs with allowlists and use parameterised queries",
+        "Availability": "Implement rate limiting, timeouts, and resource caps",
+        "Access Control": "Enforce authentication and authorisation on every endpoint",
+    }
+    for c in (cwe.get("common_consequences") or []):
+        if c in consequence_recs:
+            recs.append({"type": "consequence", "consequence": c, "recommendation": consequence_recs[c]})
+
+    # Platform-based recommendations
+    platforms = [p.get("name","") for p in (cwe.get("applicable_platforms") or [])]
+    platform_recs = {
+        "Java": "Use OWASP Java Encoder for output encoding; avoid raw JDBC string formatting",
+        "PHP": "Use PDO with prepared statements; enable strict mode; use htmlspecialchars()",
+        "C": "Use safe string functions (strncpy, snprintf); enable ASLR and stack canaries",
+        "C++": "Use smart pointers; enable AddressSanitizer in testing; avoid raw pointer arithmetic",
+        "Python": "Use parameterised queries with SQLAlchemy; validate with Pydantic; run Bandit SAST",
+        "JavaScript": "Sanitise DOM inputs; use Content Security Policy; avoid eval()",
+    }
+    for p in platforms[:3]:
+        if p in platform_recs:
+            recs.append({"type": "platform", "platform": p, "recommendation": platform_recs[p]})
+
+    # Detection recommendations
+    if not cwe.get("detection_methods"):
+        recs.append({
+            "type": "detection",
+            "recommendation": "No standard detection methods documented — consider manual code review and penetration testing as primary detection strategies"
+        })
+    else:
+        recs.append({
+            "type": "detection",
+            "recommendation": f"Detection methods available: {', '.join(cwe['detection_methods'][:3])}"
+        })
+
+    # OWASP recommendation
+    if owasp.get("in_owasp_top10"):
+        recs.append({
+            "type": "owasp",
+            "recommendation": f"Consult OWASP guidance for {owasp['owasp_categories'][0]} — includes specific prevention checklists"
+        })
+
+    priority = "CRITICAL" if cwe.get("likelihood_of_exploit") == "High" else \
+               "HIGH" if cwe.get("likelihood_of_exploit") == "Medium" else "MEDIUM"
+
+    return {
+        "cwe_id": cwe_id,
+        "name": cwe.get("name"),
+        "priority": priority,
+        "likelihood": cwe.get("likelihood_of_exploit"),
+        "recommendations": recs,
+        "general_advice": [
+            "Follow OWASP Secure Coding Practices",
+            "Run SAST tools (Bandit, Semgrep) on every commit",
+            "Include this CWE in your threat model",
+            "Add specific test cases to detect this weakness",
+        ],
+        "references": [
+            f"https://cwe.mitre.org/data/definitions/{cwe_id}.html",
+            "https://owasp.org/www-project-secure-coding-practices-quick-reference-guide/",
+            "https://nvd.nist.gov/",
+        ]
+    }
+

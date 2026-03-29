@@ -828,7 +828,9 @@
     <button class="nav-tab active" onclick="showPage('dashboard')">Dashboard</button>
     <button class="nav-tab" onclick="showPage('search')">Search</button>
     <button class="nav-tab" onclick="showPage('threat')">Threat Profile</button>
+    <button class="nav-tab" onclick="showPage('consequences')">Consequences</button>
     <button class="nav-tab" onclick="showPage('owasp')">OWASP</button>
+    <button class="nav-tab" onclick="showPage('report')">PDF Report</button>
   </nav>
   <div class="status-pill">
     <div class="status-dot"></div>
@@ -1025,6 +1027,54 @@
       </div>
     </div>
 
+  </div>
+
+  <!-- ══ PAGE: CONSEQUENCES ══════════════════════════════ -->
+  <div class="page-section" id="page-consequences">
+    <div class="page-title">
+      <h1>Consequence Analysis</h1>
+      <p>// What attackers can achieve — grouped by impact type with actionable recommendations</p>
+    </div>
+    <div class="panel" style="margin-bottom:1.5rem">
+      <div class="panel-header">
+        <div class="panel-title">⚠️ Attacker Consequence Categories</div>
+        <div class="panel-badge">cross-catalogue · with recommendations</div>
+      </div>
+      <div class="panel-body">
+        <div id="consequence-content">
+          <div class="loading"><div class="spin"></div>Loading consequence analysis...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ PAGE: PDF REPORT ════════════════════════════════ -->
+  <div class="page-section" id="page-report">
+    <div class="page-title">
+      <h1>PDF Security Report</h1>
+      <p>// Generate a downloadable security report for any CWE or the full catalogue</p>
+    </div>
+    <div class="panel" style="margin-bottom:1.5rem">
+      <div class="panel-header">
+        <div class="panel-title">📄 Generate Report</div>
+        <div class="panel-badge">CWE + NVD + recommendations</div>
+      </div>
+      <div class="panel-body">
+        <div style="margin-bottom:1rem">
+          <div style="font-family:var(--mono);font-size:0.72rem;color:var(--muted);margin-bottom:0.5rem">
+            Enter a CWE ID to generate a full security report:
+          </div>
+          <div class="search-wrap">
+            <input class="search-input" type="text" id="report-input"
+              placeholder="CWE ID e.g. 79, 89, 22..."
+              onkeydown="if(event.key==='Enter') generateReport()">
+            <button class="search-btn" onclick="generateReport()">GENERATE</button>
+            <button class="search-btn" style="background:var(--accent3)" onclick="generateFullReport()">FULL CATALOGUE</button>
+          </div>
+        </div>
+        <div id="report-preview"></div>
+      </div>
+    </div>
   </div>
 
 </main>
@@ -1446,14 +1496,302 @@
     }
   }
 
-  // ── Nav page switching ────────────────────────────────────
+  // ── Consequence Analysis ──────────────────────────────────
+  async function loadConsequences() {
+    const el = document.getElementById('consequence-content');
+    if (el.dataset.loaded) return;
+    try {
+      const data = await fetchAPI('/api/v1/analysis/consequences');
+      const top = data.analysis.slice(0, 8);
+      const max = top[0]?.cwe_count || 1;
+
+      el.innerHTML = `
+        <div style="display:flex;gap:2rem;margin-bottom:1.25rem;font-family:var(--mono);font-size:0.75rem;flex-wrap:wrap">
+          <div><span style="color:#fff;font-weight:700">${data.total_weaknesses_analysed}</span><span style="color:var(--muted)"> weaknesses analysed</span></div>
+          <div><span style="color:var(--accent2);font-weight:700">${data.consequence_categories}</span><span style="color:var(--muted)"> consequence categories</span></div>
+        </div>
+        ${top.map(c => `
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:1rem;margin-bottom:0.75rem">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;flex-wrap:wrap;gap:0.5rem">
+              <div style="font-weight:700;font-size:0.85rem;color:#fff">${c.consequence}</div>
+              <div style="display:flex;gap:0.75rem;font-family:var(--mono);font-size:0.68rem">
+                <span style="color:var(--accent2)">${c.cwe_count} CWEs (${c.percentage}%)</span>
+                <span style="color:var(--high)">${c.high_likelihood_count} High risk</span>
+              </div>
+            </div>
+            <div class="bar-track" style="margin-bottom:0.75rem">
+              <div class="bar-fill" style="width:${(c.cwe_count/max*100).toFixed(0)}%;background:var(--accent2)"></div>
+            </div>
+            <div style="margin-bottom:0.5rem">
+              <div style="font-family:var(--mono);font-size:0.62rem;color:var(--muted);margin-bottom:0.3rem">TOP CWEs</div>
+              <div style="display:flex;flex-wrap:wrap;gap:4px">
+                ${c.top_cwes.map(cw => `
+                  <span style="font-family:var(--mono);font-size:0.62rem;padding:2px 8px;border-radius:4px;
+                    background:${cw.likelihood==='High'?'rgba(248,81,73,0.1)':'rgba(88,166,255,0.1)'};
+                    color:${cw.likelihood==='High'?'var(--high)':'var(--accent2)'};
+                    border:1px solid ${cw.likelihood==='High'?'rgba(248,81,73,0.25)':'rgba(88,166,255,0.2)'};
+                    cursor:pointer" onclick="showPage('search');loadCWEDetail('${cw.cwe_id}')">
+                    CWE-${cw.cwe_id}
+                  </span>
+                `).join('')}
+              </div>
+            </div>
+            <div>
+              <div style="font-family:var(--mono);font-size:0.62rem;color:var(--muted);margin-bottom:0.3rem">RECOMMENDATIONS</div>
+              ${c.recommendations.slice(0,3).map(r => `
+                <div style="display:flex;gap:0.5rem;padding:3px 0;font-family:var(--mono);font-size:0.68rem;color:var(--text)">
+                  <span style="color:var(--accent3)">▸</span><span>${r}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `).join('')}
+        <div class="insight-box">${data.insight}</div>
+      `;
+      el.dataset.loaded = '1';
+
+    } catch(e) {
+      el.innerHTML = `<div class="error-msg">Failed to load — is the API running?</div>`;
+    }
+  }
+
+  // ── PDF Report Generation ─────────────────────────────────
+  async function generateReport() {
+    const id = document.getElementById('report-input').value.trim().replace(/^CWE-/i,'');
+    if (!id || !/^\d+$/.test(id)) {
+      document.getElementById('report-preview').innerHTML =
+        `<div class="error-msg">Enter a valid numeric CWE ID</div>`;
+      return;
+    }
+    const el = document.getElementById('report-preview');
+    el.innerHTML = `<div class="loading"><div class="spin"></div>Generating report for CWE-${id}...</div>`;
+
+    try {
+      const [cwe, recs, nvd, owasp] = await Promise.all([
+        fetchAPI(`/api/v1/cwe/${id}`),
+        fetchAPI(`/api/v1/recommendations/${id}`),
+        fetchAPI(`/api/v1/enrich/nvd/${id}?limit=5`),
+        fetchAPI(`/api/v1/enrich/owasp/${id}`),
+      ]);
+
+      const previewHtml = buildReportPreview(cwe, recs, nvd, owasp);
+      el.innerHTML = previewHtml;
+
+      // Auto trigger print
+      setTimeout(() => {
+        const printContent = document.getElementById('print-area').innerHTML;
+        const win = window.open('','_blank');
+        win.document.write(`
+          <html><head><title>WeaknessIQ Report — CWE-${id}</title>
+          <style>
+            body { font-family: Arial, sans-serif; color: #1a1a1a; padding: 2rem; max-width: 800px; margin: 0 auto; }
+            h1 { color: #1c2330; border-bottom: 3px solid #58a6ff; padding-bottom: 0.5rem; }
+            h2 { color: #2c3e50; margin-top: 1.5rem; font-size: 1rem; border-left: 4px solid #58a6ff; padding-left: 0.75rem; }
+            .meta { background: #f5f7fa; padding: 1rem; border-radius: 6px; margin: 1rem 0; font-size: 0.85rem; }
+            .meta span { display: inline-block; margin-right: 1.5rem; }
+            .label { color: #6e7f94; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+            .high { color: #c0392b; font-weight: bold; }
+            .med  { color: #e67e22; font-weight: bold; }
+            .low  { color: #27ae60; font-weight: bold; }
+            table { width: 100%; border-collapse: collapse; margin: 0.75rem 0; font-size: 0.85rem; }
+            th { background: #1c2330; color: white; padding: 8px 12px; text-align: left; }
+            td { padding: 7px 12px; border-bottom: 1px solid #eee; }
+            tr:nth-child(even) td { background: #f9f9f9; }
+            .rec { padding: 6px 0; border-bottom: 1px solid #eee; font-size: 0.85rem; }
+            .rec::before { content: "▸ "; color: #58a6ff; }
+            .cve-row { padding: 8px 0; border-bottom: 1px solid #eee; }
+            .footer { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #eee; font-size: 0.75rem; color: #999; text-align: center; }
+            .owasp-tag { background: #f0ebff; color: #5b3fa0; padding: 3px 10px; border-radius: 4px; font-size: 0.8rem; }
+            .priority-box { display: inline-block; padding: 4px 14px; border-radius: 6px; font-weight: bold; font-size: 0.85rem; }
+            .priority-CRITICAL { background: #fde8e8; color: #c0392b; }
+            .priority-HIGH { background: #fef3e2; color: #e67e22; }
+            .priority-MEDIUM { background: #e8f5e9; color: #27ae60; }
+            @media print { body { padding: 0; } }
+          </style></head><body>
+          ${printContent}
+          <div class="footer">Generated by WeaknessIQ · Data sources: MITRE CWE, NIST NVD API v2, OWASP Top 10 2021 · ${new Date().toLocaleDateString()}</div>
+          <script>window.onload=()=>window.print()<\/script>
+          </body></html>
+        `);
+        win.document.close();
+      }, 300);
+
+    } catch(e) {
+      el.innerHTML = `<div class="error-msg">Report generation failed — CWE-${id} not found</div>`;
+    }
+  }
+
+  function buildReportPreview(cwe, recs, nvd, owasp) {
+    const sevColours = { CRITICAL:'#f85149', HIGH:'#e3b341', MEDIUM:'#58a6ff', LOW:'#3fb950' };
+    const likelihoodColor = cwe.likelihood_of_exploit === 'High' ? 'var(--high)' :
+                            cwe.likelihood_of_exploit === 'Medium' ? 'var(--med)' : 'var(--low)';
+
+    const printContent = `
+      <h1>Security Weakness Report — CWE-${cwe.cwe_id}</h1>
+      <div class="meta">
+        <span><span class="label">Name</span><br><strong>${cwe.name}</strong></span>
+        <span><span class="label">Priority</span><br><span class="priority-box priority-${recs.priority}">${recs.priority}</span></span>
+        <span><span class="label">Abstraction</span><br>${cwe.abstraction}</span>
+        <span><span class="label">Likelihood</span><br><strong style="color:${cwe.likelihood_of_exploit==='High'?'#c0392b':cwe.likelihood_of_exploit==='Medium'?'#e67e22':'#27ae60'}">${cwe.likelihood_of_exploit||'Unspecified'}</strong></span>
+        ${owasp.in_owasp_top10 ? `<span><span class="label">OWASP</span><br><span class="owasp-tag">${owasp.owasp_categories[0]?.split('—')[0]?.trim()}</span></span>` : ''}
+      </div>
+
+      <h2>Description</h2>
+      <p style="font-size:0.9rem;line-height:1.7;color:#333">${cwe.description}</p>
+
+      <h2>NVD Real-World Impact</h2>
+      <table>
+        <tr><th>Metric</th><th>Value</th></tr>
+        <tr><td>Total CVEs in NVD</td><td><strong>${nvd.total_cves_in_nvd?.toLocaleString() || 0}</strong></td></tr>
+        ${Object.entries(nvd.severity_breakdown||{}).filter(([k,v])=>v>0).map(([k,v])=>
+          `<tr><td>${k} severity CVEs</td><td>${v}</td></tr>`
+        ).join('')}
+      </table>
+      ${nvd.cves?.slice(0,3).map(c => `
+        <div class="cve-row">
+          <strong>${c.cve_id}</strong> — ${c.severity} (CVSS ${c.cvss_score||'N/A'}) — ${c.published||''}<br>
+          <span style="font-size:0.82rem;color:#555">${c.description}</span>
+        </div>
+      `).join('') || ''}
+
+      <h2>Security Recommendations</h2>
+      ${recs.recommendations.map(r =>
+        `<div class="rec">${r.recommendation}</div>`
+      ).join('')}
+      <h2>General Security Advice</h2>
+      ${recs.general_advice.map(a => `<div class="rec">${a}</div>`).join('')}
+
+      <h2>Affected Platforms</h2>
+      <p style="font-size:0.85rem">${(cwe.applicable_platforms||[]).map(p=>p.name).filter(Boolean).join(', ') || 'Not specified'}</p>
+
+      <h2>References</h2>
+      ${recs.references.map(r => `<div style="font-size:0.82rem;margin:3px 0"><a href="${r}">${r}</a></div>`).join('')}
+    `;
+
+    return `
+      <div id="print-area" style="display:none">${printContent}</div>
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:1.25rem;margin-top:0.5rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+          <div>
+            <div style="font-size:0.9rem;font-weight:700;color:#fff">CWE-${cwe.cwe_id}: ${cwe.name}</div>
+            <div style="font-family:var(--mono);font-size:0.65rem;color:var(--muted);margin-top:2px">
+              ${cwe.abstraction} · Priority:
+              <span style="color:${recs.priority==='CRITICAL'?'var(--high)':recs.priority==='HIGH'?'var(--med)':'var(--accent3)'}">
+                ${recs.priority}
+              </span>
+            </div>
+          </div>
+          <button class="search-btn" onclick="document.getElementById('print-area').style.display='block';window.print();document.getElementById('print-area').style.display='none'">
+            ⬇ Download PDF
+          </button>
+        </div>
+        <div style="font-family:var(--mono);font-size:0.68rem;color:var(--muted);margin-bottom:0.75rem">
+          NVD: <span style="color:#fff">${nvd.total_cves_in_nvd?.toLocaleString()||0} CVEs</span> ·
+          OWASP: <span style="color:var(--accent4)">${owasp.in_owasp_top10 ? owasp.owasp_categories[0]?.split('—')[0]?.trim() : 'Not in Top 10'}</span> ·
+          Likelihood: <span style="color:${likelihoodColor}">${cwe.likelihood_of_exploit||'Unspecified'}</span>
+        </div>
+        <div style="font-family:var(--mono);font-size:0.65rem;color:var(--muted);margin-bottom:0.4rem;text-transform:uppercase;letter-spacing:0.06em">Recommendations</div>
+        ${recs.recommendations.slice(0,4).map(r => `
+          <div style="display:flex;gap:0.5rem;padding:4px 0;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:0.68rem;color:var(--text)">
+            <span style="color:var(--accent3)">▸</span><span>${r.recommendation}</span>
+          </div>
+        `).join('')}
+        <div class="insight-box" style="margin-top:0.75rem">
+          Report ready — click "Download PDF" to save. Opens print dialog automatically.
+        </div>
+      </div>
+    `;
+  }
+
+  async function generateFullReport() {
+    const el = document.getElementById('report-preview');
+    el.innerHTML = `<div class="loading"><div class="spin"></div>Generating full catalogue report...</div>`;
+    try {
+      const [summary, likelihood, gaps, lang] = await Promise.all([
+        fetchAPI('/api/v1/summary'),
+        fetchAPI('/api/v1/analysis/exploit-likelihood'),
+        fetchAPI('/api/v1/analysis/detection-gaps'),
+        fetchAPI('/api/v1/analysis/language-risk'),
+      ]);
+
+      const win = window.open('','_blank');
+      win.document.write(`
+        <html><head><title>WeaknessIQ — Full Catalogue Security Report</title>
+        <style>
+          body { font-family: Arial, sans-serif; color: #1a1a1a; padding: 2rem; max-width: 900px; margin: 0 auto; }
+          h1 { color: #1c2330; border-bottom: 3px solid #58a6ff; padding-bottom: 0.5rem; }
+          h2 { color: #2c3e50; margin-top: 2rem; font-size: 1.1rem; border-left: 4px solid #58a6ff; padding-left: 0.75rem; }
+          table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem; }
+          th { background: #1c2330; color: white; padding: 10px 14px; text-align: left; }
+          td { padding: 8px 14px; border-bottom: 1px solid #eee; }
+          tr:nth-child(even) td { background: #f9f9f9; }
+          .stat-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 1rem; margin: 1rem 0; }
+          .stat-box { background: #f5f7fa; border-radius: 8px; padding: 1rem; text-align: center; }
+          .stat-num { font-size: 2rem; font-weight: 800; color: #1c2330; }
+          .stat-lbl { font-size: 0.75rem; color: #6e7f94; margin-top: 4px; }
+          .footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #eee; font-size: 0.75rem; color: #999; text-align: center; }
+          @media print { body { padding: 0; } }
+        </style></head><body>
+        <h1>WeaknessIQ — Security Threat Landscape Report</h1>
+        <p style="color:#666;font-size:0.9rem">Generated: ${new Date().toLocaleDateString()} · Data: MITRE CWE, NIST NVD, OWASP Top 10 2021</p>
+
+        <h2>Catalogue Summary</h2>
+        <div class="stat-grid">
+          <div class="stat-box"><div class="stat-num">${summary.total_weaknesses}</div><div class="stat-lbl">Total Weaknesses</div></div>
+          <div class="stat-box"><div class="stat-num">${likelihood.distribution.find(d=>d.likelihood==='High')?.count||0}</div><div class="stat-lbl">High Likelihood</div></div>
+          <div class="stat-box"><div class="stat-num">${summary.by_abstraction.find(a=>a.abstraction==='Base')?.count||0}</div><div class="stat-lbl">Base Level</div></div>
+          <div class="stat-box"><div class="stat-num">${gaps.no_detection_methods}</div><div class="stat-lbl">Detection Gaps</div></div>
+        </div>
+
+        <h2>Exploit Likelihood Distribution</h2>
+        <table>
+          <tr><th>Likelihood</th><th>Count</th><th>Percentage</th></tr>
+          ${likelihood.distribution.map(d=>`<tr><td>${d.likelihood}</td><td>${d.count}</td><td>${d.percentage}%</td></tr>`).join('')}
+        </table>
+
+        <h2>Top Language Risk Profiles</h2>
+        <table>
+          <tr><th>Language</th><th>CWE Count</th><th>High Likelihood</th></tr>
+          ${lang.language_profiles.slice(0,10).map(l=>`<tr><td>${l.language}</td><td>${l.total}</td><td>${l.high||0}</td></tr>`).join('')}
+        </table>
+
+        <h2>Critical Detection Gaps</h2>
+        <p style="font-size:0.9rem">${gaps.no_detection_methods} weaknesses have no documented detection methods. ${gaps.critical_gaps.length} are High likelihood.</p>
+        <table>
+          <tr><th>CWE ID</th><th>Name</th><th>Likelihood</th></tr>
+          ${gaps.critical_gaps.slice(0,10).map(g=>`<tr><td>CWE-${g.cwe_id}</td><td>${g.name}</td><td style="color:#c0392b">High</td></tr>`).join('')}
+        </table>
+
+        <h2>Abstraction Level Breakdown</h2>
+        <table>
+          <tr><th>Abstraction</th><th>Count</th><th>Description</th></tr>
+          ${summary.by_abstraction.map(a=>`<tr><td>${a.abstraction}</td><td>${a.count}</td><td>${
+            a.abstraction==='Base'?'Most actionable for developers':
+            a.abstraction==='Variant'?'Technology-specific':
+            a.abstraction==='Class'?'Technology-independent':
+            a.abstraction==='Pillar'?'Highest-level category':'Special compound weakness'
+          }</td></tr>`).join('')}
+        </table>
+
+        <div class="footer">WeaknessIQ Security Intelligence Platform · ELE8094 Software Assurance · PureSecure Consultancy Prototype</div>
+        <script>window.onload=()=>window.print()<\/script>
+        </body></html>
+      `);
+      win.document.close();
+      el.innerHTML = `<div class="insight-box">Full catalogue report opened in new tab — print or save as PDF from there.</div>`;
+    } catch(e) {
+      el.innerHTML = `<div class="error-msg">Failed to generate report</div>`;
+    }
+  }
+
+  // ── Nav page switching (updated) ──────────────────────────
   function showPage(name) {
     document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
     document.querySelector(`[onclick="showPage('${name}')"]`).classList.add('active');
     document.getElementById(`page-${name}`).classList.add('active');
-    // Lazy load OWASP page when first opened
     if (name === 'owasp') loadOWASPCoverage();
+    if (name === 'consequences') loadConsequences();
   }
 
   // ── Tab switching ─────────────────────────────────────────
