@@ -1104,11 +1104,35 @@
         <div style="font-family:var(--mono);font-size:0.72rem;color:var(--muted);margin-bottom:0.5rem">
           Enter a CWE ID to generate a full security report:
         </div>
+<<<<<<< HEAD
         <div class="search-wrap" style="margin-bottom:0.5rem">
           <input class="search-input" type="text" id="report-input"
             placeholder="CWE ID e.g. 79, 89, 22, 611..."
             onkeydown="if(event.key==='Enter') generateReport()">
           <button class="search-btn" onclick="generateReport()">GENERATE REPORT</button>
+=======
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Row 4: Threat Profile -->
+  <div class="panel" style="margin-bottom:1.5rem">
+    <div class="panel-header">
+      <div class="panel-title">🎯 Enriched Threat Profile</div>
+      <div class="panel-badge">CWE + NVD + OWASP</div>
+    </div>
+    <div class="panel-body">
+      <div class="search-wrap">
+        <input class="search-input" type="text" id="threat-input"
+        placeholder="Enter CWE / CVE / weakness (e.g. CWE-79, CVE-2021-44228, SQL Injection)..."
+          onkeydown="if(event.key==='Enter') loadThreatProfile()">
+        <button class="search-btn" onclick="loadThreatProfile()">ANALYSE</button>
+      </div>
+      <div id="threat-result">
+        <div style="color:var(--muted);font-family:var(--mono);font-size:0.72rem">
+          // Enter a CWE ID to see enriched threat profile from 3 data sources
+>>>>>>> c7b192519e47970018ba0c49089744a6da7521ac
         </div>
         <div style="font-family:var(--mono);font-size:0.65rem;color:var(--muted)">
           Report includes: description · consequence analysis · OWASP mapping · real CVEs from NVD · fix recommendations
@@ -1391,104 +1415,116 @@
   }
 
   // ── Threat Profile ────────────────────────────────────────
+ 
   async function loadThreatProfile() {
-    const id = document.getElementById('threat-input').value.trim().replace(/^CWE-/i, '');
-    const el = document.getElementById('threat-result');
+  const q = document.getElementById('threat-input').value.trim();
+  const el = document.getElementById('threat-result');
 
-    if (!id || !/^\d+$/.test(id)) {
-      el.innerHTML = `<span style="color:var(--high);font-family:var(--mono);font-size:0.72rem">// Invalid ID — enter a numeric CWE ID</span>`;
-      return;
-    }
-
-    el.innerHTML = `<div class="loading"><div class="spin"></div>Fetching from CWE + NVD + OWASP...</div>`;
-
-    try {
-      const d = await fetchAPI(`/api/v1/enrich/threat-profile/${id}`);
-      const sev = d.nvd_enrichment?.severity_breakdown || {};
-      const sevColours = { CRITICAL:'#f85149', HIGH:'#e3b341', MEDIUM:'#58a6ff', LOW:'#3fb950', UNKNOWN:'#6e7f94' };
-
-      const owaspTags = d.owasp_mapping?.owasp_categories?.length
-        ? d.owasp_mapping.owasp_categories.map(c =>
-            `<span class="owasp-tag">${c.split('—')[0].trim()}</span>`).join('')
-        : `<span class="owasp-none">Not in OWASP Top 10</span>`;
-
-      const riskFactors = d.risk_factors?.length
-        ? d.risk_factors.map(r => `
-            <div class="risk-factor">
-              <span class="risk-dot">▸</span>
-              <span>${r}</span>
-            </div>`).join('')
-        : `<div style="color:var(--muted);font-family:var(--mono);font-size:0.7rem">No risk factors identified</div>`;
-
-      const sampleCVEs = d.nvd_enrichment?.sample_cves?.slice(0,3).map(c => `
-        <div class="cve-item">
-          <div class="cve-header">
-            <a class="cve-id" href="${c.nvd_url}" target="_blank" rel="noopener noreferrer">${c.cve_id}</a>
-            <span class="cve-score" style="background:${sevColours[c.severity] || '#6e7f94'}22;color:${sevColours[c.severity] || '#6e7f94'};border:1px solid ${sevColours[c.severity] || '#6e7f94'}44">
-              ${c.severity} ${c.cvss_score ? '· ' + c.cvss_score : ''}
-            </span>
-          </div>
-          <div class="cve-desc">${c.description}</div>
-        </div>`).join('') || `<div style="color:var(--muted);font-family:var(--mono);font-size:0.7rem">No CVE samples available</div>`;
-
-      el.innerHTML = `
-        <div style="margin-bottom:1rem">
-          <div style="font-size:1rem;font-weight:700;color:#fff">CWE-${d.cwe_id}: ${d.name}</div>
-          <div style="font-family:var(--mono);font-size:0.7rem;color:var(--muted);margin-top:3px">
-            ${d.abstraction} · Likelihood:
-            <span style="color:${LIKELIHOOD_COLOURS[d.likelihood_of_exploit]||'var(--muted)'}">
-              ${d.likelihood_of_exploit || 'Unspecified'}
-            </span>
-          </div>
-        </div>
-
-        <div class="threat-grid">
-          <!-- NVD Stats -->
-          <div class="threat-block">
-            <div class="threat-block-title">📊 NVD Real CVEs</div>
-            <div class="nvd-count">${(d.nvd_enrichment?.total_cves_in_nvd || 0).toLocaleString()}</div>
-            <div class="nvd-label">total CVEs in NVD</div>
-            <div style="margin-top:0.75rem">
-              ${Object.entries(sev).filter(([k,v])=>v>0).map(([k,v])=>`
-                <div class="sev-row">
-                  <span class="sev-name">${k}</span>
-                  <span class="sev-val" style="color:${sevColours[k]||'#fff'}">${v}</span>
-                </div>`).join('')}
-            </div>
-          </div>
-
-          <!-- OWASP -->
-          <div class="threat-block">
-            <div class="threat-block-title">🛡 OWASP Top 10 2021</div>
-            <div style="margin-bottom:0.5rem">${owaspTags}</div>
-            <div style="font-family:var(--mono);font-size:0.65rem;color:var(--muted);margin-top:0.5rem">
-              Source: owasp.org/Top10
-            </div>
-          </div>
-
-          <!-- Risk Factors -->
-          <div class="threat-block">
-            <div class="threat-block-title">⚠️ Risk Factors (${d.risk_factor_count || 0})</div>
-            ${riskFactors}
-          </div>
-        </div>
-
-        <!-- Sample CVEs -->
-        <div style="margin-top:0.5rem">
-          <div style="font-family:var(--mono);font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.5rem">
-            Sample CVEs from NVD
-          </div>
-          ${sampleCVEs}
-        </div>
-
-        <div style="margin-top:0.75rem;font-family:var(--mono);font-size:0.65rem;color:var(--border2)">
-          Data sources: ${(d.data_sources||[]).join(' · ')}
-        </div>
-      `;
-    } catch(e) {
-      el.innerHTML = `<span style="color:var(--high);font-family:var(--mono);font-size:0.72rem">// CWE-${id} not found or API error</span>`;
-    }
+  if (!q) {
+    el.innerHTML = `<span style="color:var(--high);font-family:var(--mono);font-size:0.72rem">// Enter a valid query</span>`;
+    return;
   }
+
+  el.innerHTML = `<div class="loading"><div class="spin"></div>Analysing threat intelligence...</div>`;
+
+  try {
+    const d = await fetchAPI(`/api/v1/search?q=${encodeURIComponent(q)}`);
+
+    // ---------------------------
+    // Risk Score
+    // ---------------------------
+    const riskColour =
+      d.risk_band === "Critical" ? "#f85149" :
+      d.risk_band === "High" ? "#e3b341" :
+      d.risk_band === "Medium" ? "#58a6ff" :
+      "#3fb950";
+
+    // ---------------------------
+    // MITRE
+    // ---------------------------
+    const mitre = (d.mitre_attack || []).map(t => `
+      <div class="risk-factor">
+        <span class="risk-dot">▸</span>
+        <span>${t.technique_id} — ${t.name}</span>
+      </div>
+    `).join('') || `<div style="color:var(--muted);font-family:var(--mono);font-size:0.7rem">No mapping available</div>`;
+
+    // ---------------------------
+    // Mitigations
+    // ---------------------------
+    const mitigations = (d.mitigations || []).map(m => `
+      <div class="risk-factor">
+        <span class="risk-dot">▸</span>
+        <span>${m}</span>
+      </div>
+    `).join('');
+
+    // ---------------------------
+    // Detections
+    // ---------------------------
+    const detections = (d.detections || []).map(m => `
+      <div class="risk-factor">
+        <span class="risk-dot">▸</span>
+        <span>${m}</span>
+      </div>
+    `).join('');
+
+    // ---------------------------
+    // CWE Info
+    // ---------------------------
+    const cwe = d.cwe?.id || d.cve?.cwe_ids?.join(', ') || "Unknown";
+
+    // ---------------------------
+    // FINAL UI
+    // ---------------------------
+    el.innerHTML = `
+      <div style="margin-bottom:1rem">
+        <div style="font-size:1rem;font-weight:700;color:#fff">
+          ${q.toUpperCase()}
+        </div>
+        <div style="font-family:var(--mono);font-size:0.7rem;color:var(--muted)">
+          Mapped CWE: <span style="color:var(--accent2)">${cwe}</span>
+        </div>
+      </div>
+
+      <div class="threat-grid">
+
+        <!-- Risk -->
+        <div class="threat-block">
+          <div class="threat-block-title">🔥 Risk Score</div>
+          <div class="nvd-count" style="color:${riskColour}">
+            ${d.risk_score || 0}
+          </div>
+          <div class="nvd-label">${d.risk_band || "Unknown"}</div>
+        </div>
+
+        <!-- MITRE -->
+        <div class="threat-block">
+          <div class="threat-block-title">🎯 MITRE ATT&CK</div>
+          ${mitre}
+        </div>
+
+        <!-- Mitigations -->
+        <div class="threat-block">
+          <div class="threat-block-title">🛡 Mitigations</div>
+          ${mitigations}
+        </div>
+
+      </div>
+
+      <!-- Detection -->
+      <div style="margin-top:1rem">
+        <div style="font-family:var(--mono);font-size:0.65rem;color:var(--muted);margin-bottom:0.5rem">
+          🔍 Detection Opportunities
+        </div>
+        ${detections}
+      </div>
+    `;
+
+  } catch (e) {
+    el.innerHTML = `<span style="color:var(--high);font-family:var(--mono);font-size:0.72rem">// API error — check backend</span>`;
+  }
+}
 
   // ── OWASP Coverage ────────────────────────────────────────
   async function loadOWASPCoverage() {
