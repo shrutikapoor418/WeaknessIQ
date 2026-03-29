@@ -830,6 +830,9 @@
     <button class="nav-tab" onclick="showPage('threat')">Threat Profile</button>
     <button class="nav-tab" onclick="showPage('consequences')">Consequences</button>
     <button class="nav-tab" onclick="showPage('owasp')">OWASP</button>
+    <button class="nav-tab" onclick="showPage('top10')">Top 10 Dangerous</button>
+    <button class="nav-tab" onclick="showPage('risk')">Risk Score</button>
+    <button class="nav-tab" onclick="showPage('priority')">Fix Priority</button>
     <button class="nav-tab" onclick="showPage('report')">PDF Report</button>
   </nav>
   <div class="status-pill">
@@ -1114,6 +1117,84 @@
           Report includes: description · consequence analysis · OWASP mapping · real CVEs from NVD · fix recommendations
         </div>
         <div id="report-preview" style="margin-top:1rem"></div>
+      </div>
+    </div>
+  </div>
+  <!-- ══ PAGE: TOP 10 DANGEROUS ══════════════════════════ -->
+  <div class="page-section" id="page-top10">
+    <div class="page-title">
+      <h1>Top 10 Most Dangerous CWEs Right Now</h1>
+      <p>// Composite danger score — High likelihood + CVE volume + OWASP listed + no detection method</p>
+    </div>
+    <div class="panel" style="margin-bottom:1.5rem">
+      <div class="panel-header">
+        <div class="panel-title">🔥 Danger Rankings</div>
+        <div class="panel-badge">live composite scoring</div>
+      </div>
+      <div class="panel-body">
+        <div id="top10-content">
+          <div class="loading"><div class="spin"></div>Calculating danger scores...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ PAGE: RISK SCORE ════════════════════════════════ -->
+  <div class="page-section" id="page-risk">
+    <div class="page-title">
+      <h1>Risk Scoring Engine</h1>
+      <p>// Enter any CWE ID to get a composite risk score based on 5 weighted factors</p>
+    </div>
+    <div class="panel" style="margin-bottom:1.5rem">
+      <div class="panel-header">
+        <div class="panel-title">🎯 Risk Score Calculator</div>
+        <div class="panel-badge">5-factor composite score</div>
+      </div>
+      <div class="panel-body">
+        <div class="search-wrap" style="margin-bottom:1rem">
+          <input class="search-input" type="text" id="risk-input"
+            placeholder="CWE ID e.g. 79, 89, 22..."
+            onkeydown="if(event.key==='Enter') calculateRisk()">
+          <button class="search-btn" onclick="calculateRisk()">CALCULATE RISK</button>
+        </div>
+        <div style="font-family:var(--mono);font-size:0.65rem;color:var(--muted);margin-bottom:1rem">
+          Factors: exploit likelihood · NVD CVE volume · OWASP listing · detection availability · relationship chain size
+        </div>
+        <div id="risk-result">
+          <div style="color:var(--muted);font-family:var(--mono);font-size:0.72rem">
+            // Enter a CWE ID to calculate its composite risk score
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ PAGE: FIX PRIORITY PLANNER ═════════════════════ -->
+  <div class="page-section" id="page-priority">
+    <div class="page-title">
+      <h1>Fix Priority Planner</h1>
+      <p>// Enter up to 5 CWE IDs — system ranks them by danger and tells you what to fix first</p>
+    </div>
+    <div class="panel" style="margin-bottom:1.5rem">
+      <div class="panel-header">
+        <div class="panel-title">📋 Priority Planner</div>
+        <div class="panel-badge">ranked fix order</div>
+      </div>
+      <div class="panel-body">
+        <div style="font-family:var(--mono);font-size:0.65rem;color:var(--muted);margin-bottom:0.5rem">
+          Enter CWE IDs separated by commas:
+        </div>
+        <div class="search-wrap" style="margin-bottom:1rem">
+          <input class="search-input" type="text" id="priority-input"
+            placeholder="e.g. 79, 89, 22, 611, 352"
+            onkeydown="if(event.key==='Enter') planPriority()">
+          <button class="search-btn" onclick="planPriority()">PLAN FIXES</button>
+        </div>
+        <div id="priority-result">
+          <div style="color:var(--muted);font-family:var(--mono);font-size:0.72rem">
+            // Enter CWE IDs above to get a prioritised fix plan
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -2097,13 +2178,241 @@
     }
   }
 
-  // ── Nav page switching (updated) ──────────────────────────
+  // ── Risk Scoring Engine ──────────────────────────────────
+  function calcRiskScore(cwe, nvd, owasp) {
+    let score = 0;
+    const factors = [];
+    // Factor 1: Exploit likelihood (0-30 pts)
+    if (cwe.likelihood_of_exploit === 'High')   { score += 30; factors.push({name:'Exploit Likelihood', points:30, max:30, reason:'High — most likely to be exploited'}); }
+    else if (cwe.likelihood_of_exploit === 'Medium') { score += 15; factors.push({name:'Exploit Likelihood', points:15, max:30, reason:'Medium likelihood'}); }
+    else { score += 5; factors.push({name:'Exploit Likelihood', points:5, max:30, reason:'Low or unspecified'}); }
+    // Factor 2: NVD CVE volume (0-25 pts)
+    const cveCount = nvd.total_cves_in_nvd || 0;
+    const cvePts = cveCount > 10000 ? 25 : cveCount > 1000 ? 20 : cveCount > 100 ? 12 : cveCount > 10 ? 6 : 2;
+    score += cvePts;
+    factors.push({name:'Real CVE Volume', points:cvePts, max:25, reason:`${cveCount.toLocaleString()} CVEs in NVD`});
+    // Factor 3: OWASP Top 10 (0-20 pts)
+    if (owasp.in_owasp_top10) { score += 20; factors.push({name:'OWASP Top 10', points:20, max:20, reason:`Listed in ${owasp.owasp_categories?.[0]?.split('—')[0]?.trim()}`}); }
+    else { factors.push({name:'OWASP Top 10', points:0, max:20, reason:'Not in OWASP Top 10'}); }
+    // Factor 4: Detection methods (0-15 pts) — fewer = more dangerous
+    const detCount = (cwe.detection_methods||[]).length;
+    const detPts = detCount === 0 ? 15 : detCount === 1 ? 8 : 2;
+    score += detPts;
+    factors.push({name:'Detection Difficulty', points:detPts, max:15, reason: detCount === 0 ? 'No detection methods — blind spot' : `${detCount} detection method(s) available`});
+    // Factor 5: Critical CVEs (0-10 pts)
+    const critCount = nvd.severity_breakdown?.CRITICAL || 0;
+    const critPts = critCount > 10 ? 10 : critCount > 0 ? 6 : 0;
+    score += critPts;
+    factors.push({name:'Critical CVEs', points:critPts, max:10, reason:`${critCount} CRITICAL severity CVEs`});
+    return { score, factors, max: 100 };
+  }
+
+  function riskLabel(score) {
+    if (score >= 80) return { label:'CRITICAL', color:'var(--high)' };
+    if (score >= 60) return { label:'HIGH',     color:'var(--med)' };
+    if (score >= 40) return { label:'MEDIUM',   color:'#e3b341' };
+    return                  { label:'LOW',      color:'var(--accent3)' };
+  }
+
+  async function calculateRisk() {
+    const id  = document.getElementById('risk-input').value.trim().replace(/^CWE-/i,'');
+    const el  = document.getElementById('risk-result');
+    if (!id || !/^\d+$/.test(id)) { el.innerHTML = `<div class="error-msg">Enter a valid CWE ID</div>`; return; }
+    el.innerHTML = `<div class="loading"><div class="spin"></div>Calculating risk score for CWE-${id}...</div>`;
+    try {
+      const [cwe, nvd, owasp] = await Promise.all([
+        fetchAPI(`/api/v1/cwe/${id}`),
+        fetchAPI(`/api/v1/enrich/nvd/${id}?limit=3`),
+        fetchAPI(`/api/v1/enrich/owasp/${id}`),
+      ]);
+      const {score, factors} = calcRiskScore(cwe, nvd, owasp);
+      const {label, color}   = riskLabel(score);
+      el.innerHTML = `
+        <div style="display:flex;align-items:center;gap:1.5rem;margin-bottom:1.25rem;flex-wrap:wrap">
+          <div>
+            <div style="font-size:3rem;font-weight:800;color:${color};line-height:1">${score}</div>
+            <div style="font-family:var(--mono);font-size:0.65rem;color:var(--muted)">out of 100</div>
+          </div>
+          <div>
+            <div style="font-size:1.1rem;font-weight:700;color:#fff">CWE-${cwe.cwe_id}: ${cwe.name}</div>
+            <div style="font-family:var(--mono);font-size:0.72rem;margin-top:4px">
+              Risk Level: <span style="color:${color};font-weight:700">${label}</span>
+            </div>
+          </div>
+        </div>
+        <div style="font-family:var(--mono);font-size:0.65rem;color:var(--muted);margin-bottom:0.5rem;text-transform:uppercase;letter-spacing:0.08em">Score Breakdown</div>
+        ${factors.map(f => `
+          <div style="margin-bottom:0.6rem">
+            <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:0.68rem;margin-bottom:3px">
+              <span style="color:var(--text)">${f.name}</span>
+              <span style="color:${f.points===f.max?'var(--accent3)':'var(--muted)'}">${f.points}/${f.max} pts</span>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill" style="width:${(f.points/f.max*100).toFixed(0)}%;background:${f.points===f.max?'var(--accent3)':f.points>f.max/2?'var(--med)':'var(--border2)'}"></div>
+            </div>
+            <div style="font-family:var(--mono);font-size:0.6rem;color:var(--muted);margin-top:2px">${f.reason}</div>
+          </div>
+        `).join('')}
+        <div class="insight-box" style="margin-top:0.75rem">
+          Risk score based on: exploit likelihood (30pts) · NVD CVE volume (25pts) · OWASP listing (20pts) · detection difficulty (15pts) · critical CVEs (10pts)
+        </div>
+      `;
+    } catch(e) {
+      el.innerHTML = `<div class="error-msg">// CWE-${id} not found</div>`;
+    }
+  }
+
+  // ── Top 10 Most Dangerous ─────────────────────────────────
+  async function loadTop10() {
+    const el = document.getElementById('top10-content');
+    if (el.dataset.loaded) return;
+    el.innerHTML = `<div class="loading"><div class="spin"></div>Analysing all 969 CWEs — this may take a moment...</div>`;
+    try {
+      const [gaps, likelihood, owasp] = await Promise.all([
+        fetchAPI('/api/v1/analysis/detection-gaps'),
+        fetchAPI('/api/v1/analysis/exploit-likelihood'),
+        fetchAPI('/api/v1/enrich/owasp-coverage'),
+      ]);
+
+      // Get high likelihood CWEs with no detection = most dangerous candidates
+      const dangerous = gaps.critical_gaps || [];
+
+      // Score each one
+      const scored = await Promise.all(
+        dangerous.slice(0, 15).map(async (g) => {
+          try {
+            const [cwe, nvd, owaspCwe] = await Promise.all([
+              fetchAPI(`/api/v1/cwe/${g.cwe_id}`),
+              fetchAPI(`/api/v1/enrich/nvd/${g.cwe_id}?limit=1`),
+              fetchAPI(`/api/v1/enrich/owasp/${g.cwe_id}`),
+            ]);
+            const {score} = calcRiskScore(cwe, nvd, owaspCwe);
+            return { ...g, score, nvd_total: nvd.total_cves_in_nvd||0, in_owasp: owaspCwe.in_owasp_top10, cwe_name: cwe.name };
+          } catch { return { ...g, score: 50, nvd_total: 0, in_owasp: false, cwe_name: g.name }; }
+        })
+      );
+
+      const top10 = scored.sort((a,b) => b.score - a.score).slice(0, 10);
+      const sevColours = ['var(--high)','var(--high)','var(--med)','var(--med)','#e3b341','#e3b341','var(--accent2)','var(--accent2)','var(--accent3)','var(--accent3)'];
+
+      el.innerHTML = `
+        <div style="font-family:var(--mono);font-size:0.68rem;color:var(--muted);margin-bottom:1rem">
+          Ranked by composite danger score — exploit likelihood + CVE volume + OWASP listing + no detection method
+        </div>
+        ${top10.map((c, i) => `
+          <div style="display:grid;grid-template-columns:40px 1fr auto;align-items:center;gap:1rem;
+            padding:0.75rem;margin-bottom:0.5rem;background:var(--bg);border:1px solid var(--border);
+            border-radius:8px;cursor:pointer;transition:border-color 0.2s"
+            onmouseover="this.style.borderColor='${sevColours[i]}'"
+            onmouseout="this.style.borderColor='var(--border)'"
+            onclick="showPage('risk');document.getElementById('risk-input').value='${c.cwe_id}';calculateRisk()">
+            <div style="font-size:1.4rem;font-weight:800;color:${sevColours[i]};text-align:center;line-height:1">#${i+1}</div>
+            <div>
+              <div style="font-family:var(--mono);font-size:0.72rem;color:var(--accent2);font-weight:700;margin-bottom:2px">CWE-${c.cwe_id}</div>
+              <div style="font-size:0.8rem;color:#fff;font-weight:600;margin-bottom:3px">${c.cwe_name || c.name}</div>
+              <div style="display:flex;gap:0.75rem;font-family:var(--mono);font-size:0.62rem;flex-wrap:wrap">
+                <span style="color:var(--high)">High likelihood</span>
+                <span style="color:var(--muted)">${(c.nvd_total||0).toLocaleString()} CVEs</span>
+                <span style="color:var(--high)">0 detection methods</span>
+                ${c.in_owasp ? `<span style="color:var(--accent4)">OWASP Top 10</span>` : ''}
+              </div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:1.5rem;font-weight:800;color:${sevColours[i]}">${c.score}</div>
+              <div style="font-family:var(--mono);font-size:0.6rem;color:var(--muted)">/ 100</div>
+            </div>
+          </div>
+        `).join('')}
+        <div class="insight-box" style="margin-top:0.75rem">
+          Click any CWE to see its full risk score breakdown. These are your highest priority fixes — High likelihood of exploit with no documented detection method.
+        </div>
+      `;
+      el.dataset.loaded = '1';
+    } catch(e) {
+      el.innerHTML = `<div class="error-msg">Failed to load — is the API running?</div>`;
+    }
+  }
+
+  // ── Fix Priority Planner ──────────────────────────────────
+  async function planPriority() {
+    const input = document.getElementById('priority-input').value.trim();
+    const el    = document.getElementById('priority-result');
+    const ids   = input.split(',').map(s => s.trim().replace(/^CWE-/i,'')).filter(s => /^\d+$/.test(s));
+    if (!ids.length || ids.length > 8) {
+      el.innerHTML = `<div class="error-msg">// Enter 1-8 CWE IDs separated by commas</div>`;
+      return;
+    }
+    el.innerHTML = `<div class="loading"><div class="spin"></div>Scoring and ranking ${ids.length} CWEs...</div>`;
+    try {
+      const scored = await Promise.all(ids.map(async id => {
+        const [cwe, nvd, owasp, recs] = await Promise.all([
+          fetchAPI(`/api/v1/cwe/${id}`),
+          fetchAPI(`/api/v1/enrich/nvd/${id}?limit=1`),
+          fetchAPI(`/api/v1/enrich/owasp/${id}`),
+          fetchAPI(`/api/v1/recommendations/${id}`),
+        ]);
+        const {score, factors} = calcRiskScore(cwe, nvd, owasp);
+        return { id, score, cwe, nvd, owasp, recs, factors };
+      }));
+      scored.sort((a,b) => b.score - a.score);
+
+      const priorityLabels = ['Fix IMMEDIATELY','Fix this week','Fix this sprint','Fix this month','Fix when possible'];
+      const priorityColors = ['var(--high)','var(--high)','var(--med)','#e3b341','var(--accent3)'];
+
+      el.innerHTML = `
+        <div style="font-family:var(--mono);font-size:0.68rem;color:var(--muted);margin-bottom:1rem">
+          ${scored.length} CWEs ranked by danger score — fix in this order:
+        </div>
+        ${scored.map((s, i) => `
+          <div style="background:var(--bg);border:1px solid var(--border);border-left:3px solid ${priorityColors[Math.min(i,4)]};border-radius:0 8px 8px 0;padding:0.875rem 1rem;margin-bottom:0.75rem">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;flex-wrap:wrap;gap:0.5rem">
+              <div style="display:flex;align-items:center;gap:0.75rem">
+                <span style="font-size:1.4rem;font-weight:800;color:${priorityColors[Math.min(i,4)]}">#${i+1}</span>
+                <div>
+                  <span style="font-family:var(--mono);font-size:0.72rem;color:var(--accent2);font-weight:700">CWE-${s.id}</span>
+                  <span style="font-size:0.78rem;color:#fff;font-weight:600;margin-left:0.5rem">${s.cwe.name}</span>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:0.75rem">
+                <span style="font-family:var(--mono);font-size:0.62rem;padding:3px 10px;border-radius:4px;
+                  background:${priorityColors[Math.min(i,4)]}22;color:${priorityColors[Math.min(i,4)]};
+                  border:1px solid ${priorityColors[Math.min(i,4)]}44">
+                  ${priorityLabels[Math.min(i,4)]}
+                </span>
+                <span style="font-size:1.2rem;font-weight:800;color:${priorityColors[Math.min(i,4)]}">${s.score}<span style="font-size:0.65rem;font-weight:400;color:var(--muted)">/100</span></span>
+              </div>
+            </div>
+            <div style="font-family:var(--mono);font-size:0.65rem;color:var(--muted);margin-bottom:0.5rem;display:flex;gap:1rem;flex-wrap:wrap">
+              <span>Likelihood: <span style="color:${LIKELIHOOD_COLOURS[s.cwe.likelihood_of_exploit]||'var(--muted)'}">${s.cwe.likelihood_of_exploit||'Unspecified'}</span></span>
+              <span>CVEs: <span style="color:var(--text)">${(s.nvd.total_cves_in_nvd||0).toLocaleString()}</span></span>
+              <span>OWASP: <span style="color:${s.owasp.in_owasp_top10?'var(--accent4)':'var(--muted)'}">${s.owasp.in_owasp_top10?'Listed':'Not listed'}</span></span>
+              <span>Detection: <span style="color:${(s.cwe.detection_methods||[]).length===0?'var(--high)':'var(--accent3)'}">${(s.cwe.detection_methods||[]).length===0?'None documented':'Available'}</span></span>
+            </div>
+            <div style="font-family:var(--mono);font-size:0.65rem;color:var(--muted);margin-bottom:0.4rem;text-transform:uppercase;letter-spacing:0.06em">Top fix recommendation</div>
+            ${s.recs.recommendations.slice(0,1).map(r => `
+              <div style="display:flex;gap:0.5rem;font-family:var(--mono);font-size:0.68rem;color:var(--text)">
+                <span style="color:var(--accent3)">▸</span><span>${r.recommendation}</span>
+              </div>
+            `).join('') || '<div style="font-family:var(--mono);font-size:0.68rem;color:var(--muted)">Manual code review recommended</div>'}
+          </div>
+        `).join('')}
+        <div class="insight-box" style="margin-top:0.5rem">
+          Fix #1 first — highest danger score means highest risk to your system right now.
+        </div>
+      `;
+    } catch(e) {
+      el.innerHTML = `<div class="error-msg">// Failed — check CWE IDs are valid and API is running</div>`;
+    }
+  }
+
+  // ── Updated showPage ──────────────────────────────────────
   function showPage(name) {
     document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
     document.querySelector(`[onclick="showPage('${name}')"]`).classList.add('active');
     document.getElementById(`page-${name}`).classList.add('active');
-    if (name === 'owasp') loadOWASPCoverage();
+    if (name === 'owasp')  loadOWASPCoverage();
+    if (name === 'top10')  loadTop10();
   }
 
   // ── Tab switching ─────────────────────────────────────────
