@@ -213,59 +213,77 @@ def _empty_result(cwe_id: str, reason: str) -> dict:
 
 
 # ── OWASP Top 10 Mapping ──────────────────────────────────────────────────────
-# Static mapping — OWASP Top 10 2021 to CWE IDs
-# Source: https://owasp.org/Top10/
-OWASP_TOP10_2021 = {
-    "A01:2021 — Broken Access Control": [
+# Static mapping — OWASP Top 10 2025 to CWE IDs
+# Updated from 2021 to 2025 — two new categories, one consolidation:
+#   NEW: A03:2025 Software Supply Chain Failures
+#   NEW: A10:2025 Mishandling of Exceptional Conditions
+#   REMOVED: A10:2021 SSRF — rolled into A01:2025 Broken Access Control
+#   MOVED:   Security Misconfiguration A05→A02, Injection A03→A05
+# Source: https://owasp.org/Top10/2025/
+OWASP_TOP10_2025 = {
+    "A01:2025 — Broken Access Control": [
+        # Broken Access Control (same as 2021) + SSRF now rolled in (CWE-918)
         "22", "23", "35", "59", "200", "201", "219", "264", "275",
         "276", "284", "285", "352", "359", "377", "402", "425", "441",
         "497", "538", "566", "601", "639", "651", "668", "706", "862",
-        "863", "913", "922", "1275"
+        "863", "913", "918", "922", "1275"
     ],
-    "A02:2021 — Cryptographic Failures": [
+    "A02:2025 — Security Misconfiguration": [
+        # Was A05:2021 — moved up to #2 in 2025
+        "2", "5", "11", "13", "15", "16", "260", "315", "520", "526",
+        "537", "541", "547", "611", "614", "756", "776", "942", "1021", "1173"
+    ],
+    "A03:2025 — Software Supply Chain Failures": [
+        # NEW in 2025 — expanded from A06:2021 Vulnerable Components
+        # Covers full supply chain: dependencies, build systems, CI/CD, distribution
+        "494", "829", "830", "937", "1035", "1104"
+    ],
+    "A04:2025 — Cryptographic Failures": [
+        # Was A02:2021 — moved down to #4
         "261", "296", "310", "319", "321", "322", "323", "324", "325",
         "326", "327", "328", "329", "330", "331", "335", "336", "337",
         "338", "340", "347", "523", "720", "757", "759", "760", "780",
         "818", "916"
     ],
-    "A03:2021 — Injection": [
+    "A05:2025 — Injection": [
+        # Was A03:2021 — moved down to #5
         "20", "74", "75", "77", "78", "79", "80", "83", "87", "88",
         "89", "90", "91", "93", "94", "95", "96", "97", "98", "99",
         "116", "138", "184", "470", "471", "564", "610", "643", "644",
         "652", "917"
     ],
-    "A04:2021 — Insecure Design": [
-        "73", "183", "209", "213", "235", "256", "257", "266", "269",
+    "A06:2025 — Insecure Design": [
+        # Was A04:2021 — moved down to #6
+        "73", "183", "213", "235", "256", "257", "266", "269",
         "280", "311", "312", "313", "316", "419", "430", "434", "444",
         "451", "472", "501", "522", "525", "539", "579", "598", "602",
         "620", "636", "645", "650", "653", "656", "657", "799"
     ],
-    "A05:2021 — Security Misconfiguration": [
-        "2", "11", "13", "15", "16", "260", "315", "520", "526", "537",
-        "541", "547", "611", "614", "756", "776", "942", "1021", "1173"
-    ],
-    "A06:2021 — Vulnerable Components": [
-        "937", "1035", "1104"
-    ],
-    "A07:2021 — Auth Failures": [
+    "A07:2025 — Authentication Failures": [
+        # Same position as A07:2021
         "255", "259", "287", "288", "290", "294", "295", "297", "300",
         "302", "304", "306", "307", "346", "384", "521", "613", "620",
         "640", "798", "940", "1216"
     ],
-    "A08:2021 — Software Integrity Failures": [
-        "345", "353", "426", "494", "502", "565", "784", "829", "830", "915"
+    "A08:2025 — Software or Data Integrity Failures": [
+        # Same as A08:2021 — slight rename
+        "345", "353", "426", "502", "565", "784", "829", "830", "915"
     ],
-    "A09:2021 — Logging Failures": [
+    "A09:2025 — Security Logging and Alerting Failures": [
+        # Was A09:2021 — renamed to emphasise alerting not just logging
         "117", "223", "532", "778"
     ],
-    "A10:2021 — SSRF": [
-        "918"
+    "A10:2025 — Mishandling of Exceptional Conditions": [
+        # NEW in 2025 — improper error handling, logical errors, failing open
+        # Includes CWE-209 (error message info disclosure) and CWE-918 (SSRF)
+        "209", "390", "391", "392", "393", "394", "395", "396", "397",
+        "476", "544", "636", "703", "754", "755", "756", "957"
     ],
 }
 
-# Reverse lookup: CWE ID → OWASP categories
+# Reverse lookup: CWE ID → OWASP 2025 categories
 CWE_TO_OWASP: dict[str, list[str]] = {}
-for category, cwe_list in OWASP_TOP10_2021.items():
+for category, cwe_list in OWASP_TOP10_2025.items():
     for cwe in cwe_list:
         if cwe not in CWE_TO_OWASP:
             CWE_TO_OWASP[cwe] = []
@@ -273,7 +291,7 @@ for category, cwe_list in OWASP_TOP10_2021.items():
 
 
 def get_owasp_mapping(cwe_id: str) -> dict:
-    """Return OWASP Top 10 2021 categories for a given CWE."""
+    """Return OWASP Top 10 2025 categories for a given CWE."""
     if not str(cwe_id).isdigit():
         raise ValueError("CWE ID must be numeric")
 
@@ -282,17 +300,17 @@ def get_owasp_mapping(cwe_id: str) -> dict:
         "cwe_id": cwe_id,
         "owasp_categories": categories,
         "in_owasp_top10": len(categories) > 0,
-        "owasp_version": "OWASP Top 10 2021",
-        "source": "https://owasp.org/Top10/",
+        "owasp_version": "OWASP Top 10 2025",
+        "source": "https://owasp.org/Top10/2025/",
     }
 
 
 def get_owasp_coverage_summary(cwe_ids: list[str]) -> dict:
     """
-    For a list of CWE IDs, show how many map to each OWASP category.
-    Gives a portfolio-level view of your OWASP coverage.
+    For a list of CWE IDs, show how many map to each OWASP 2025 category.
+    Gives a portfolio-level view of OWASP Top 10 2025 coverage.
     """
-    category_counts: dict[str, int] = {cat: 0 for cat in OWASP_TOP10_2021}
+    category_counts: dict[str, int] = {cat: 0 for cat in OWASP_TOP10_2025}
 
     covered = 0
     for cwe_id in cwe_ids:
@@ -312,5 +330,6 @@ def get_owasp_coverage_summary(cwe_ids: list[str]) -> dict:
                                      key=lambda x: x[1], reverse=True)
             if count > 0
         ],
-        "owasp_version": "OWASP Top 10 2021",
+        "owasp_version": "OWASP Top 10 2025",
+        "source": "https://owasp.org/Top10/2025/",
     }
