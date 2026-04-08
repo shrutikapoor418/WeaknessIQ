@@ -48,22 +48,8 @@ async def lifespan(app: FastAPI):
     logger.info("WeaknessIQ starting up...")
     init_engine()
     await create_tables()
-    xml_path = Path(__file__).parent.parent.parent / "data" / "cwec_latest.xml"
-    if xml_path.exists():
-        try:
-            parser = CWEParser(xml_path)
-            result = parser.parse()
-            async for session in get_session():
-                await load_cwe_data(session, result.entries)
-                break
-            logger.info(f"CWE data loaded: {result.total_count} entries")
-        except (SecurityError, ParseError) as e:
-            logger.error(f"Failed to load CWE data: {e}")
-    else:
-        logger.warning("CWE XML not found.")
+    logger.info("Startup complete (no heavy loading)")
     yield
-    logger.info("WeaknessIQ shutting down...")
-
 app = FastAPI(
     title="WeaknessIQ",
     description="CWE analysis API enriched with NVD CVE data and OWASP Top 10 mapping",
