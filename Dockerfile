@@ -1,13 +1,4 @@
-# ============================================================
-# Dockerfile — Hardened Python container
-# ============================================================
-# Security decisions documented inline.
-# ============================================================
-
-# Pin to specific digest, not just tag, to prevent image substitution
-# (supply chain protection — update digest intentionally, not automatically)
-FROM python:3.11-slim@sha256:3be54ded5fa864f36d4a4a9d2b9f03e6dc8c4c03f4a2ad2b3d36b85427fc9b85
-
+FROM python:3.11-slim
 # ── Metadata ─────────────────────────────────────────────────
 LABEL maintainer="PureSecure" \
       description="CWE Analyser — secure prototype"
