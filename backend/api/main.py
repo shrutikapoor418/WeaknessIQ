@@ -4,7 +4,7 @@ WeaknessIQ — FastAPI Application
 Data sources:
 1. MITRE CWE XML       — weakness catalogue (969 entries)
 2. NIST NVD API v2     — real CVEs per weakness
-3. OWASP Top 10 2021   — industry standard category mapping
+3. OWASP Top 10 2025   — industry standard category mapping
 
 Security decisions:
 - CWE-942: CORS restricted to explicit allowlist
@@ -24,6 +24,8 @@ from collections import defaultdict
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -34,8 +36,6 @@ from backend.db.database import create_tables, get_session, init_engine, CWEMode
 from backend.db.loader import load_cwe_data
 from backend.parser.cwe_parser import CWEParser, SecurityError, ParseError
 from backend.analysis import insights
-from fastapi.staticfiles import StaticFiles
-app.mount("/", StaticFiles(directory="frontend", html=True), name="static")
 from backend.integrations.nvd import (
     fetch_cves_for_cwe,
     get_owasp_mapping,
@@ -52,6 +52,7 @@ async def lifespan(app: FastAPI):
     await create_tables()
     logger.info("Startup complete (no heavy loading)")
     yield
+
 app = FastAPI(
     title="WeaknessIQ",
     description="CWE analysis API enriched with NVD CVE data and OWASP Top 10 mapping",
@@ -65,10 +66,10 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,https://weaknessiq.onrender.com").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[o.strip() for o in allowed_origins],
+    allow_origins=["*"],
     allow_credentials=False,
     allow_methods=["GET"],
     allow_headers=["Content-Type"],
@@ -82,7 +83,7 @@ async def add_security_headers(request: Request, call_next):
     response.headers["X-XSS-Protection"] = "1; mode=block"
     if os.getenv("APP_ENV") == "production":
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-    response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
+    response.headers["Content-Security-Policy"] = "default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data:; frame-ancestors 'none'"
     if "server" in response.headers:
         del response.headers["server"]
     return response
@@ -95,7 +96,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 @app.get("/health")
 async def health_check():
     return {"status": "ok", "service": "WeaknessIQ", "version": "2.0.0",
-            "data_sources": ["MITRE CWE", "NIST NVD", "OWASP Top 10 2021"]}
+            "data_sources": ["MITRE CWE", "NIST NVD", "OWASP Top 10 2025"]}
 
 @app.get("/api/v1/summary")
 @limiter.limit("30/minute")
@@ -231,7 +232,7 @@ async def get_threat_profile(request: Request, cwe_id: str,
         if critical > 0:
             risk_factors.append(f"{critical} CRITICAL severity CVEs in NVD")
         if owasp_data.get("in_owasp_top10"):
-            risk_factors.append("Listed in OWASP Top 10 2021")
+            risk_factors.append("Listed in OWASP Top 10 2025")
         if cwe_detail.get("likelihood_of_exploit") == "High":
             risk_factors.append("High exploit likelihood (CWE catalogue)")
         if chain_data.get("nodes_found", 0) > 5:
@@ -254,7 +255,7 @@ async def get_threat_profile(request: Request, cwe_id: str,
             },
             "risk_factors": risk_factors,
             "risk_factor_count": len(risk_factors),
-            "data_sources": ["MITRE CWE", "NIST NVD API v2", "OWASP Top 10 2021"],
+            "data_sources": ["MITRE CWE", "NIST NVD API v2", "OWASP Top 10 2025"],
         }
     except HTTPException:
         raise
@@ -363,3 +364,9 @@ async def get_recommendations(request: Request, cwe_id: str,
             "https://nvd.nist.gov/",
         ]
     }
+
+# ── Serve frontend ────────────────────────────────────────────
+# Must be LAST — after all API routes
+frontend_path = Path(__file__).parent.parent.parent / "frontend"
+if frontend_path.exists():
+    app.mount("/", StaticFiles(directory=str(frontend_path), html=True), name="static")
