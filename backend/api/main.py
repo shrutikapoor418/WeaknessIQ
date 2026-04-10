@@ -34,6 +34,8 @@ from backend.db.database import create_tables, get_session, init_engine, CWEMode
 from backend.db.loader import load_cwe_data
 from backend.parser.cwe_parser import CWEParser, SecurityError, ParseError
 from backend.analysis import insights
+from fastapi.staticfiles import StaticFiles
+app.mount("/", StaticFiles(directory="frontend", html=True), name="static")
 from backend.integrations.nvd import (
     fetch_cves_for_cwe,
     get_owasp_mapping,
