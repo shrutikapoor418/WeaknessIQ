@@ -50,7 +50,20 @@ async def lifespan(app: FastAPI):
     logger.info("WeaknessIQ starting up...")
     init_engine()
     await create_tables()
-    await load_cwe_data()
+     try:
+        from backend.parser.cwe_parser import CWEParser
+        from backend.db.database import AsyncSessionLocal
+        xml_path = Path("/app/data/cwec_latest.xml")
+        if xml_path.exists():
+            parser = CWEParser()
+            entries = parser.parse(str(xml_path))
+            async with AsyncSessionLocal() as session:
+                await load_cwe_data(session, entries)
+            logger.info(f"Loaded {len(entries)} CWEs")
+        else:
+            logger.warning("CWE XML not found — database empty")
+    except Exception as e:
+        logger.error(f"CWE load failed: {e}")
     logger.info("Startup complete")
     yield
 
