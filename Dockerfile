@@ -19,6 +19,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
 COPY --chown=appuser:appgroup backend/ ./backend/
+COPY --chown=appuser:appgroup frontend/ ./frontend/
 RUN mkdir -p /app/data && chown -R appuser:appgroup /app/data
 
 USER appuser
