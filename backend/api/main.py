@@ -50,7 +50,8 @@ async def lifespan(app: FastAPI):
     logger.info("WeaknessIQ starting up...")
     init_engine()
     await create_tables()
-    logger.info("Startup complete (no heavy loading)")
+    await load_cwe_data()
+    logger.info("Startup complete")
     yield
 
 app = FastAPI(
