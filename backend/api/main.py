@@ -31,7 +31,7 @@ from slowapi.errors import RateLimitExceeded
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from backend.db.database import create_tables, get_session, init_engine, CWEModel, AsyncSessionLocal
+from backend.db.database import create_tables, get_session, init_engine, CWEModel, _session_factory
 from backend.db.loader import load_cwe_data
 from backend.parser.cwe_parser import CWEParser
 from backend.analysis import insights
@@ -55,7 +55,7 @@ async def lifespan(app: FastAPI):
         if xml_path.exists():
             parser = CWEParser()
             entries = parser.parse(str(xml_path))
-            async with AsyncSessionLocal() as session:
+            async with _session_factory() as session:
                 await load_cwe_data(session, entries)
             logger.info(f"Loaded {len(entries)} CWEs from XML")
         else:
